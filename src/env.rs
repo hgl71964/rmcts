@@ -1,17 +1,28 @@
 use std::collections::HashMap;
 
 pub struct Env {
-    pub id: u32,
+    action_history: Vec<u32>,
 }
 
 impl Env {
+    pub fn new() -> Self {
+        Env {
+            action_history: Vec::new(),
+        }
+    }
     pub fn reset(&self) {}
 
-    pub fn step(&self) -> (u32, u32, bool, HashMap<u32, u32>) {
+    pub fn step(&self, action: u32) -> (u32, u32, bool, HashMap<u32, u32>) {
         (0, 0, true, HashMap::new())
     }
 
-    pub fn checkpoint(&self) {}
+    pub fn get_action_space(&self) -> u32 {
+        1
+    }
 
-    pub fn restore(&self) {}
+    pub fn checkpoint(&self) -> Vec<u32> {
+        self.action_history.clone()
+    }
+
+    pub fn restore(&mut self) {}
 }

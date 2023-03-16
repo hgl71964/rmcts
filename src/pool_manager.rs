@@ -1,7 +1,11 @@
-pub struct Pool_manager {}
+pub struct PoolManager {}
 
-impl Pool_manager {
+impl PoolManager {
     pub fn new() -> Self {
-        Pool_manager {}
+        PoolManager {}
     }
+
+    pub fn wait_for_all(&self) {}
+
+    pub fn kill_stragger(&mut self) {}
 }
