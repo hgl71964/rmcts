@@ -1,5 +1,4 @@
-#[path = "tree.rs"]
-mod tree;
+use crate::tree;
 
 pub fn run() {
     let budget = 64;

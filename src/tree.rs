@@ -1,16 +1,9 @@
-#[path = "checkpoint_manager.rs"]
-mod checkpoint_manager;
-#[path = "env.rs"]
-mod env;
-#[path = "node.rs"]
-mod node;
-#[path = "pool_manager.rs"]
-mod pool_manager;
+use crate::checkpoint_manager;
+use crate::env::Env;
+use crate::node::Node;
+use crate::pool_manager;
 
-use env::Env;
-use node::Node;
 use rand::Rng;
-
 use std::collections::HashMap;
 use std::thread;
 use std::time::{Duration, Instant};
