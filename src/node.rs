@@ -35,3 +35,11 @@ impl Node {
         true
     }
 }
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.checkpoint_idx == other.checkpoint_idx
+    }
+
+impl Eq for Node {}
+
