@@ -5,14 +5,15 @@ use crate::pool_manager;
 
 use rand::Rng;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::thread;
 use std::time::{Duration, Instant};
 
-struct ExpTask {
+pub struct ExpTask {
     ckpt: Vec<u32>,
     shallow_copy_node: NodeStub,
 }
-struct SimTask {}
+pub struct SimTask {}
 
 pub struct Tree {
     // from param
@@ -27,13 +28,13 @@ pub struct Tree {
     checkpoint_data_manager: checkpoint_manager::CheckpointerManager,
 
     // for planning
-    root_node: Node,
+    root_node: Box<Node>,
     global_saving_idx: u32,
     simulation_count: u32,
     expansion_tasks: HashMap<u32, ExpTask>,
-    simulation_task: HashMap<u32, SimTask>,
-    pending_expansion_tasks: Vec<u32>,
-    pending_simulation_tasks: Vec<u32>,
+    simulation_tasks: HashMap<u32, SimTask>,
+    pending_expansion_tasks: VecDeque<u32>,
+    pending_simulation_tasks: VecDeque<u32>,
 }
 
 impl Tree {
@@ -59,9 +60,9 @@ impl Tree {
             global_saving_idx: 0,
             simulation_count: 0,
             expansion_tasks: HashMap::new(),
-            simulation_task: HashMap::new(),
-            pending_expansion_tasks: Vec::new(),
-            pending_simulation_tasks: Vec::new(),
+            simulation_tasks: HashMap::new(),
+            pending_expansion_tasks: VecDeque::new(),
+            pending_simulation_tasks: VecDeque::new(),
         }
     }
 
@@ -112,7 +113,7 @@ impl Tree {
         self.simulation_count = 0;
         self.checkpoint_data_manager.clear();
         self.expansion_tasks.clear();
-        self.simulation_task.clear();
+        self.simulation_tasks.clear();
         self.pending_expansion_tasks.clear();
         self.pending_simulation_tasks.clear();
         self.exp_pool.wait_for_all();
@@ -157,7 +158,7 @@ impl Tree {
 
     fn simulate_single_step(&mut self, sim_idx: u32) {
         // selection
-        let mut curr_node = &mut self.root_node;
+        let mut curr_node: &mut Box<Node> = &mut self.root_node;
         let mut curr_depth = 1;
         let mut rng = rand::thread_rng();
         let mut need_expansion = false;
@@ -177,6 +178,8 @@ impl Tree {
                     .checkpoint_data_manager
                     .retrieve(curr_node.checkpoint_idx);
 
+                // println!("{:?}", curr_node.children);
+
                 // Record the task
                 self.expansion_tasks.insert(
                     sim_idx,
@@ -185,7 +188,7 @@ impl Tree {
                         shallow_copy_node: cloned_curr_node,
                     },
                 );
-                self.pending_expansion_tasks.push(sim_idx);
+                self.pending_expansion_tasks.push_back(sim_idx);
 
                 need_expansion = true;
                 break;
@@ -202,15 +205,71 @@ impl Tree {
 
             // one-level deeper
             curr_depth += 1;
-            curr_node = &mut curr_node.children[action].unwrap();
+            curr_node = curr_node.child_ref(action).expect("curr_node panic");
 
-            break; // safe guard
+            // XXX safe guard
+            break;
         }
 
         // expansion
+        if need_expansion {
+            // schedule
+            while !self.pending_expansion_tasks.is_empty() && self.exp_pool.has_idle_server() {
+                let task_idx = self.pending_expansion_tasks.pop_front().unwrap();
+                let exp_task = self.expansion_tasks.remove(&task_idx).unwrap(); // remove get
+                                                                                // ownership
+                self.exp_pool
+                    .assign_expansion_task(exp_task, self.global_saving_idx, task_idx);
+                self.global_saving_idx += 1;
+            }
+
+            if self.exp_pool.occupancy() > 0.99 {
+                self.exp_pool.get_complete_expansion_task();
+
+                // update
+                let done = false;
+                if done {
+                    //
+                } else {
+                    //
+                }
+            }
+        } else {
+            // reach terminal node
+            self.incomplete_update(&mut curr_node, sim_idx);
+            self.complete_update(&mut curr_node, sim_idx, 0.0);
+            self.simulation_count += 1;
+        }
+
+        // simulation
+        while !self.pending_simulation_tasks.is_empty() && self.sim_pool.has_idle_server() {
+            let task_idx = self.pending_simulation_tasks.pop_front().unwrap();
+        }
+
+        if self.sim_pool.occupancy() > 0.99 {}
     }
 
     fn max_action(&self) -> u32 {
         0
+    }
+
+    fn incomplete_update(&mut self, curr_node: &mut Box<Node>, idx: u32) {
+        while !curr_node.is_head {
+            curr_node.update_incomplete(idx);
+            curr_node = curr_node.parent_ref().unwrap();
+        }
+        self.root_node.update_incomplete(idx);
+    }
+    fn complete_update(&mut self, curr_node: &mut Box<Node>, idx: u32, accu_reward: f32) {
+        while !curr_node.is_head {
+            curr_node.update_complete(idx, accu_reward);
+            curr_node = curr_node.parent_ref().unwrap();
+        }
+        self.root_node.update_complete(idx, accu_reward);
+    }
+
+    fn close(&mut self) {
+        self.exp_pool.close();
+        self.sim_pool.close();
     }
 }

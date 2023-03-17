@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Node {
     pub action_n: u32,
     pub checkpoint_idx: u32,
@@ -25,8 +25,8 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(action_n: u32, checkpoint_idx: u32, gamma: f32, is_head: bool) -> Self {
-        Node {
+    pub fn new(action_n: u32, checkpoint_idx: u32, gamma: f32, is_head: bool) -> Box<Self> {
+        Box::new(Node {
             action_n: action_n,
             checkpoint_idx: checkpoint_idx,
             parent: None,
@@ -45,11 +45,11 @@ impl Node {
             traverse_history: HashMap::new(),
             visited_node_count: 0,
             updated_node_count: 0,
-        }
+        })
     }
 
-    pub fn default() -> Self {
-        Node {
+    pub fn default() -> Box<Self> {
+        Box::new(Node {
             action_n: 0,
             checkpoint_idx: 0,
             parent: None,
@@ -68,7 +68,7 @@ impl Node {
             traverse_history: HashMap::new(),
             visited_node_count: 0,
             updated_node_count: 0,
-        }
+        })
     }
 
     pub fn all_child_visited(&self) -> bool {
@@ -84,11 +84,9 @@ impl Node {
     }
 
     pub fn shallow_clone(&self) -> NodeStub {
-        // TODO maybe consider not clone!
         let children: Vec<u32> = self
             .children
-            .clone()
-            .into_iter()
+            .iter()
             .map(|x| if x.is_some() { 1 } else { 0 })
             .collect();
         NodeStub {
@@ -133,17 +131,34 @@ impl Node {
     pub fn update_history(&mut self, idx: u32, action_taken: usize, reward: f32) {
         self.traverse_history.insert(idx, (action_taken, reward));
     }
-}
 
-impl PartialEq for Node {
-    fn eq(&self, other: &Self) -> bool {
-        self.checkpoint_idx == other.checkpoint_idx
+    pub fn child_ref(&mut self, action: usize) -> Result<&mut Box<Node>, ()> {
+        match &mut self.children[action] {
+            Some(e) => Ok(e),
+            None => Err(()),
+        }
     }
+    pub fn parent_ref(&mut self) -> Result<&mut Box<Node>, ()> {
+        match &mut self.parent {
+            Some(e) => Ok(e),
+            None => Err(()),
+        }
+    }
+
+    pub fn update_incomplete(&mut self, idx: u32) {}
+
+    pub fn update_complete(&mut self, idx: u32, accu_reward: f32) {}
 }
 
-impl Eq for Node {}
+// impl PartialEq for Node {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.checkpoint_idx == other.checkpoint_idx
+//     }
+// }
+//
+// impl Eq for Node {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeStub {
     pub action_n: u32,
     pub checkpoint_idx: u32,
@@ -156,12 +171,3 @@ pub struct NodeStub {
     pub visited_node_count: u32,
     pub updated_node_count: u32,
 }
-
-// impl NodeStub {
-//     pub fn new(action_n: u32, checkpoint_idx: u32, gamma: f32, is_head: bool, children_visit_count: Vec<u32>, children_complete_visit_count: Vec<u32>, visited_node_count: u32, updated_node_count: u32) -> Self {
-//         NodeStub {
-//             action_n: action_n,
-//             checkpoint_idx: checkpoint_idx,
-//         }
-//     }
-// }
