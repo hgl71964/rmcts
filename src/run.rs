@@ -1,7 +1,7 @@
 use crate::tree;
 
 pub fn run() {
-    let budget = 64;
+    let budget = 10;
     let max_sim_step = 5;
     let gamma = 1.0;
     let expansion_worker_num = 1;

@@ -17,7 +17,7 @@ impl Env {
     }
 
     pub fn get_action_space(&self) -> u32 {
-        1
+        2
     }
 
     pub fn checkpoint(&self) -> Vec<u32> {
