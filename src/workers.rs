@@ -12,7 +12,7 @@ pub enum Message {
 
 pub enum Reply {
     OK,
-    DoneExpansion(u32, u32, f32, bool, bool, Option<Vec<u32>>, u32, u32),
+    DoneExpansion(usize, u32, f32, bool, bool, Option<Vec<u32>>, u32, u32),
     DoneSimulation(),
 }
 

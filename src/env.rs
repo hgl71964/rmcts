@@ -12,7 +12,7 @@ impl Env {
     }
     pub fn reset(&self) {}
 
-    pub fn step(&self, action: u32) -> (u32, f32, bool, HashMap<u32, u32>) {
+    pub fn step(&self, action: usize) -> (u32, f32, bool, HashMap<u32, u32>) {
         (0, 0.0, true, HashMap::new())
     }
 

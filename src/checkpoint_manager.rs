@@ -28,5 +28,8 @@ impl CheckpointerManager {
         q.unwrap().clone()
     }
 
+    // pub fn restore(&mut self, global_saving_idx: u32, ) {
+    // }
+
     pub fn load_checkpoint_env(&mut self) {}
 }

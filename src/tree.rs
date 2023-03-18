@@ -2,6 +2,7 @@ use crate::checkpoint_manager;
 use crate::env::Env;
 use crate::node::{Node, NodeStub};
 use crate::pool_manager;
+use crate::workers::Reply;
 
 use rand::Rng;
 use std::cell::RefCell;
@@ -15,7 +16,12 @@ pub struct ExpTask {
     pub checkpoint_data: Vec<u32>,
     pub shallow_copy_node: NodeStub,
 }
-pub struct SimTask {}
+pub struct SimTask {
+    pub action: usize,
+    pub saving_idx: u32,
+    pub action_applied: bool,
+    pub child_saturated: bool,
+}
 
 pub struct Tree {
     // from param
@@ -34,7 +40,9 @@ pub struct Tree {
     global_saving_idx: u32,
     simulation_count: u32,
     expansion_tasks: HashMap<u32, ExpTask>,
+    expansion_nodes_copy: HashMap<u32, Rc<RefCell<Node>>>,
     simulation_tasks: HashMap<u32, SimTask>,
+    simulation_nodes_copy: HashMap<u32, Rc<RefCell<Node>>>,
     pending_expansion_tasks: VecDeque<u32>,
     pending_simulation_tasks: VecDeque<u32>,
 }
@@ -74,7 +82,9 @@ impl Tree {
             global_saving_idx: 0,
             simulation_count: 0,
             expansion_tasks: HashMap::new(),
+            expansion_nodes_copy: HashMap::new(),
             simulation_tasks: HashMap::new(),
+            simulation_nodes_copy: HashMap::new(),
             pending_expansion_tasks: VecDeque::new(),
             pending_simulation_tasks: VecDeque::new(),
         }
@@ -117,7 +127,7 @@ impl Tree {
         self.close();
     }
 
-    fn plan(&mut self, state: &u32, env: &Env) -> u32 {
+    fn plan(&mut self, state: &u32, env: &Env) -> usize {
         // skip if action space is 1
         let action_n = env.get_action_space();
         if action_n == 1 {
@@ -129,7 +139,9 @@ impl Tree {
         self.simulation_count = 0;
         self.checkpoint_data_manager.clear();
         self.expansion_tasks.clear();
+        self.expansion_nodes_copy.clear();
         self.simulation_tasks.clear();
+        self.simulation_nodes_copy.clear();
         self.pending_expansion_tasks.clear();
         self.pending_simulation_tasks.clear();
         self.exp_pool.wait_for_all(); // TODO
@@ -206,6 +218,8 @@ impl Tree {
                         shallow_copy_node: cloned_curr_node,
                     },
                 );
+                self.expansion_nodes_copy
+                    .insert(sim_idx, Rc::clone(&curr_node));
                 self.pending_expansion_tasks.push_back(sim_idx);
 
                 need_expansion = true;
@@ -213,7 +227,11 @@ impl Tree {
             }
 
             let action = curr_node.borrow().selection_action();
-            curr_node.borrow_mut().update_history(sim_idx, action);
+            curr_node.borrow_mut().update_history(
+                sim_idx,
+                action,
+                curr_node.borrow().rewards[action].clone(),
+            );
 
             if curr_node.borrow().dones[action] {
                 // exceed maximum depth
@@ -246,21 +264,67 @@ impl Tree {
             }
             // update
             if self.exp_pool.occupancy() > 0.99 {
-                self.exp_pool.get_complete_expansion_task();
+                let reply = self.exp_pool.get_complete_expansion_task();
+                if let Reply::DoneExpansion(
+                    expand_action,
+                    next_state,
+                    reward,
+                    done,
+                    child_saturated,
+                    new_checkpoint_data,
+                    saving_idx,
+                    task_idx,
+                ) = reply
+                {
+                    let curr_node_copy = self.expansion_nodes_copy.remove(&task_idx).unwrap();
+                    curr_node_copy
+                        .borrow_mut()
+                        .update_history(task_idx, expand_action, reward);
+                    curr_node_copy.borrow_mut().dones[expand_action] = done;
+                    curr_node_copy.borrow_mut().rewards[expand_action] = reward;
 
-                // update
-                let done = false;
-                if done {
-                    //
+                    if done {
+                        // If this expansion result in a terminal node,
+                        // perform update directly (simulation is not needed)
+                        assert!(new_checkpoint_data.is_none());
+                        curr_node_copy.borrow_mut().add_child(
+                            expand_action,
+                            saving_idx,
+                            self.gamma,
+                            child_saturated,
+                        );
+                        self.incomplete_update(Rc::clone(&curr_node_copy), task_idx);
+                        self.complete_update(Rc::clone(&curr_node_copy), task_idx, 0.0); // TODO update with 0 accu_reward??
+                        self.simulation_count += 1;
+                    } else {
+                        // ELSE add_child will be done after simulation!
+                        // Add task to pending simulation
+                        assert!(new_checkpoint_data.is_some());
+                        self.checkpoint_data_manager
+                            .checkpoint_env(saving_idx, new_checkpoint_data.unwrap());
+                        self.simulation_tasks.insert(
+                            task_idx,
+                            SimTask {
+                                action: expand_action,
+                                saving_idx: saving_idx,
+                                action_applied: true,
+                                child_saturated: child_saturated,
+                            },
+                        );
+                        self.simulation_nodes_copy
+                            .insert(task_idx, Rc::clone(&curr_node_copy));
+                        self.pending_simulation_tasks.push_back(task_idx)
+                    }
                 } else {
-                    //
+                    panic!("DoneExpansion destructure fails");
                 }
             }
         } else {
+            // no need expansion
             // reach terminal node
-            self.incomplete_update(curr_node.clone(), sim_idx);
+            self.incomplete_update(Rc::clone(&curr_node), sim_idx);
             // TODO update with 0.0 reward?
-            self.complete_update(curr_node.clone(), sim_idx, 0.0);
+            self.complete_update(Rc::clone(&curr_node), sim_idx, 0.0);
             self.simulation_count += 1;
         }
 
@@ -272,7 +336,7 @@ impl Tree {
         if self.sim_pool.occupancy() > 0.99 {}
     }
 
-    fn max_action(&self) -> u32 {
+    fn max_action(&self) -> usize {
         0
     }
 

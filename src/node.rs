@@ -128,9 +128,29 @@ impl Node {
         best_action
     }
 
-    pub fn update_history(&mut self, idx: u32, action_taken: usize) {
-        self.traverse_history
-            .insert(idx, (action_taken, self.rewards[action_taken].clone()));
+    pub fn update_history(&mut self, idx: u32, action_taken: usize, reward: f32) {
+        self.traverse_history.insert(idx, (action_taken, reward));
+    }
+
+    pub fn add_child(
+        &mut self,
+        expand_action: usize,
+        saving_idx: u32,
+        gamma: f32,
+        child_saturated: bool,
+    ) {
+        if child_saturated {
+            assert!(self.is_head);
+            // TODO no supported yet
+        }
+
+        match &self.children[expand_action] {
+            None => {
+                self.children[expand_action] =
+                    Some(Node::new(self.action_n, saving_idx, gamma, false))
+            }
+            Some(child) => (), // FIXME this should be a bug?
+        }
     }
 
     // pub fn child_ref(&mut self, action: usize) -> Result<&mut Box<Node>, ()> {
@@ -174,7 +194,7 @@ pub struct NodeStub {
 }
 
 impl NodeStub {
-    pub fn select_expansion_action(&self) -> u32 {
+    pub fn select_expansion_action(&self) -> usize {
         let mut cnt = 0;
         let mut rng = rand::thread_rng();
         let mut action: usize = 0;
@@ -184,7 +204,7 @@ impl NodeStub {
             }
 
             if cnt > 100 {
-                return action as u32;
+                return action;
             }
 
             if self.children_visit_count[action] > 0 && cnt < 10 {
@@ -193,7 +213,7 @@ impl NodeStub {
             }
 
             if self.children[action] == 0 {
-                return action as u32;
+                return action;
             }
         }
     }

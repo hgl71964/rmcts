@@ -112,8 +112,19 @@ impl PoolManager {
             / (self.work_num as f32)
     }
 
-    pub fn get_complete_expansion_task(&mut self) {
-        // TODO use try_recv, non-blocking
+    pub fn get_complete_expansion_task(&mut self) -> Reply {
+        loop {
+            for i in 0..(self.work_num as usize) {
+                let reply = self.rxs[i].try_recv(); // non-blocking
+                match reply {
+                    Err(_) => (),
+                    Ok(r) => {
+                        self.worker_status[i] = Status::Idle;
+                        return r;
+                    }
+                }
+            }
+        }
     }
 
     fn wait_until_all_idle(&mut self) {
@@ -141,6 +152,7 @@ impl PoolManager {
 
 #[cfg(test)]
 mod test {
+    #![allow(unused_imports)]
     // use super::{PoolManager, worker_loop};
     use super::*;
     // use std::sync::atomic::{AtomicUsize, Ordering};
