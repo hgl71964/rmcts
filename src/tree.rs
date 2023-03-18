@@ -12,8 +12,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 pub struct ExpTask {
-    ckpt: Vec<u32>,
-    shallow_copy_node: NodeStub,
+    pub ckpt: Vec<u32>,
+    pub shallow_copy_node: NodeStub,
 }
 pub struct SimTask {}
 
@@ -54,8 +54,18 @@ impl Tree {
             expansion_worker_num: expansion_worker_num,
             simulation_worker_num: simulation_worker_num,
 
-            exp_pool: pool_manager::PoolManager::new(),
-            sim_pool: pool_manager::PoolManager::new(),
+            exp_pool: pool_manager::PoolManager::new(
+                "expansion",
+                expansion_worker_num,
+                gamma,
+                max_sim_step,
+            ),
+            sim_pool: pool_manager::PoolManager::new(
+                "simulation",
+                simulation_worker_num,
+                gamma,
+                max_sim_step,
+            ),
             checkpoint_data_manager: checkpoint_manager::CheckpointerManager::new(),
 
             root_node: Node::default(),
@@ -211,7 +221,10 @@ impl Tree {
 
             // one-level deeper
             curr_depth += 1;
-            let child: Rc<RefCell<Node>> = curr_node.borrow().children[action].clone().unwrap();
+            let child: Rc<RefCell<Node>> = curr_node.borrow().children[action]
+                .as_ref()
+                .unwrap()
+                .clone();
             curr_node = child;
 
             // XXX safe guard
@@ -244,6 +257,7 @@ impl Tree {
         } else {
             // reach terminal node
             self.incomplete_update(curr_node.clone(), sim_idx);
+            // TODO update with 0.0 reward?
             self.complete_update(curr_node.clone(), sim_idx, 0.0);
             self.simulation_count += 1;
         }
