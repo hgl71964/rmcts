@@ -1,15 +1,17 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct Node {
     pub action_n: u32,
     pub checkpoint_idx: u32,
-    pub parent: Option<Box<Node>>,
+    pub parent: Option<Rc<RefCell<Node>>>,
     pub gamma: f32,
     pub is_head: bool,
 
     // children
-    pub children: Vec<Option<Box<Node>>>,
+    pub children: Vec<Option<Rc<RefCell<Node>>>>,
     pub rewards: Vec<f32>,
     pub dones: Vec<bool>,
     children_visit_count: Vec<u32>,
@@ -25,14 +27,13 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(action_n: u32, checkpoint_idx: u32, gamma: f32, is_head: bool) -> Box<Self> {
-        Box::new(Node {
+    pub fn new(action_n: u32, checkpoint_idx: u32, gamma: f32, is_head: bool) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Node {
             action_n: action_n,
             checkpoint_idx: checkpoint_idx,
             parent: None,
             gamma: gamma,
             is_head: is_head,
-
             children: vec![None; usize::try_from(action_n).unwrap()],
             rewards: vec![0.0; usize::try_from(action_n).unwrap()],
             dones: vec![false; usize::try_from(action_n).unwrap()],
@@ -40,22 +41,20 @@ impl Node {
             children_complete_visit_count: vec![0; usize::try_from(action_n).unwrap()],
             children_saturated: vec![false; usize::try_from(action_n).unwrap()],
             q_value: vec![0.0; usize::try_from(action_n).unwrap()],
-
             visit_count: 0,
             traverse_history: HashMap::new(),
             visited_node_count: 0,
             updated_node_count: 0,
-        })
+        }))
     }
 
-    pub fn default() -> Box<Self> {
-        Box::new(Node {
+    pub fn default() -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Node {
             action_n: 0,
             checkpoint_idx: 0,
             parent: None,
             gamma: 1.0,
             is_head: false,
-
             children: vec![None; usize::try_from(1).unwrap()],
             rewards: vec![0.0; usize::try_from(1).unwrap()],
             dones: vec![false; usize::try_from(1).unwrap()],
@@ -63,12 +62,11 @@ impl Node {
             children_complete_visit_count: vec![0; usize::try_from(1).unwrap()],
             children_saturated: vec![false; usize::try_from(1).unwrap()],
             q_value: vec![0.0; usize::try_from(1).unwrap()],
-
             visit_count: 0,
             traverse_history: HashMap::new(),
             visited_node_count: 0,
             updated_node_count: 0,
-        })
+        }))
     }
 
     pub fn all_child_visited(&self) -> bool {
@@ -128,22 +126,23 @@ impl Node {
         best_action
     }
 
-    pub fn update_history(&mut self, idx: u32, action_taken: usize, reward: f32) {
-        self.traverse_history.insert(idx, (action_taken, reward));
+    pub fn update_history(&mut self, idx: u32, action_taken: usize) {
+        self.traverse_history
+            .insert(idx, (action_taken, self.rewards[action_taken].clone()));
     }
 
-    pub fn child_ref(&mut self, action: usize) -> Result<&mut Box<Node>, ()> {
-        match &mut self.children[action] {
-            Some(e) => Ok(e),
-            None => Err(()),
-        }
-    }
-    pub fn parent_ref(&mut self) -> Result<&mut Box<Node>, ()> {
-        match &mut self.parent {
-            Some(e) => Ok(e),
-            None => Err(()),
-        }
-    }
+    // pub fn child_ref(&mut self, action: usize) -> Result<&mut Box<Node>, ()> {
+    //     match &mut self.children[action] {
+    //         Some(e) => Ok(e),
+    //         None => Err(()),
+    //     }
+    // }
+    // pub fn parent_ref(&mut self) -> Result<&mut Box<Node>, ()> {
+    //     match &mut self.parent {
+    //         Some(e) => Ok(e),
+    //         None => Err(()),
+    //     }
+    // }
 
     pub fn update_incomplete(&mut self, idx: u32) {}
 

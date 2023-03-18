@@ -4,8 +4,10 @@ use crate::node::{Node, NodeStub};
 use crate::pool_manager;
 
 use rand::Rng;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use std::rc::Rc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -28,7 +30,7 @@ pub struct Tree {
     checkpoint_data_manager: checkpoint_manager::CheckpointerManager,
 
     // for planning
-    root_node: Box<Node>,
+    root_node: Rc<RefCell<Node>>,
     global_saving_idx: u32,
     simulation_count: u32,
     expansion_tasks: HashMap<u32, ExpTask>,
@@ -99,6 +101,8 @@ impl Tree {
                 break;
             }
         }
+
+        self.close();
     }
 
     fn plan(&mut self, state: &u32, env: &Env) -> u32 {
@@ -158,25 +162,27 @@ impl Tree {
 
     fn simulate_single_step(&mut self, sim_idx: u32) {
         // selection
-        let mut curr_node: &mut Box<Node> = &mut self.root_node;
+        let mut curr_node: Rc<RefCell<Node>> = Rc::clone(&self.root_node);
         let mut curr_depth = 1;
         let mut rng = rand::thread_rng();
         let mut need_expansion = false;
 
         loop {
             let rand = rng.gen_range(0.0..1.0);
-            if (curr_node.no_child_available())
-                || ((!curr_node.all_child_visited()) && !curr_node.is_head && rand < 0.5)
-                || ((!curr_node.all_child_visited()) && curr_node.is_head)
+            if (curr_node.borrow().no_child_available())
+                || ((!curr_node.borrow().all_child_visited())
+                    && !curr_node.borrow().is_head
+                    && rand < 0.5)
+                || ((!curr_node.borrow().all_child_visited()) && curr_node.borrow().is_head)
             {
                 // If no child node has been updated, we have to expand anyway.
                 // Or if root node is not fully visited.
                 // Or if non-root node is not fully visited and {with prob 1/2}.
 
-                let cloned_curr_node = curr_node.shallow_clone();
+                let cloned_curr_node = curr_node.borrow().shallow_clone();
                 let checkpoint_data = self
                     .checkpoint_data_manager
-                    .retrieve(curr_node.checkpoint_idx);
+                    .retrieve(curr_node.borrow().checkpoint_idx);
 
                 // println!("{:?}", curr_node.children);
 
@@ -194,10 +200,10 @@ impl Tree {
                 break;
             }
 
-            let action = curr_node.selection_action();
-            curr_node.update_history(sim_idx, action, curr_node.rewards[action]);
+            let action = curr_node.borrow().selection_action();
+            curr_node.borrow_mut().update_history(sim_idx, action);
 
-            if curr_node.dones[action] {
+            if curr_node.borrow().dones[action] {
                 // exceed maximum depth
                 need_expansion = false;
                 break;
@@ -205,7 +211,8 @@ impl Tree {
 
             // one-level deeper
             curr_depth += 1;
-            curr_node = curr_node.child_ref(action).expect("curr_node panic");
+            let child: Rc<RefCell<Node>> = curr_node.borrow().children[action].clone().unwrap();
+            curr_node = child;
 
             // XXX safe guard
             break;
@@ -236,8 +243,8 @@ impl Tree {
             }
         } else {
             // reach terminal node
-            self.incomplete_update(&mut curr_node, sim_idx);
-            self.complete_update(&mut curr_node, sim_idx, 0.0);
+            self.incomplete_update(curr_node.clone(), sim_idx);
+            self.complete_update(curr_node.clone(), sim_idx, 0.0);
             self.simulation_count += 1;
         }
 
@@ -253,19 +260,24 @@ impl Tree {
         0
     }
 
-    fn incomplete_update(&mut self, curr_node: &mut Box<Node>, idx: u32) {
-        while !curr_node.is_head {
-            curr_node.update_incomplete(idx);
-            curr_node = curr_node.parent_ref().unwrap();
+    fn incomplete_update(&mut self, mut curr_node: Rc<RefCell<Node>>, idx: u32) {
+        while !curr_node.borrow().is_head {
+            curr_node.borrow_mut().update_incomplete(idx);
+            let parent: Rc<RefCell<Node>> = curr_node.borrow().parent.as_ref().unwrap().clone();
+            curr_node = parent;
         }
-        self.root_node.update_incomplete(idx);
+        self.root_node.borrow_mut().update_incomplete(idx);
     }
-    fn complete_update(&mut self, curr_node: &mut Box<Node>, idx: u32, accu_reward: f32) {
-        while !curr_node.is_head {
-            curr_node.update_complete(idx, accu_reward);
-            curr_node = curr_node.parent_ref().unwrap();
+
+    fn complete_update(&mut self, mut curr_node: Rc<RefCell<Node>>, idx: u32, accu_reward: f32) {
+        while !curr_node.borrow().is_head {
+            curr_node.borrow_mut().update_complete(idx, accu_reward);
+            let parent: Rc<RefCell<Node>> = curr_node.borrow().parent.as_ref().unwrap().clone();
+            curr_node = parent;
         }
-        self.root_node.update_complete(idx, accu_reward);
+        self.root_node
+            .borrow_mut()
+            .update_complete(idx, accu_reward);
     }
 
     fn close(&mut self) {
