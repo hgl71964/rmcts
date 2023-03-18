@@ -12,8 +12,8 @@ impl Env {
     }
     pub fn reset(&self) {}
 
-    pub fn step(&self, action: u32) -> (u32, u32, bool, HashMap<u32, u32>) {
-        (0, 0, true, HashMap::new())
+    pub fn step(&self, action: u32) -> (u32, f32, bool, HashMap<u32, u32>) {
+        (0, 0.0, true, HashMap::new())
     }
 
     pub fn get_action_space(&self) -> u32 {
@@ -24,5 +24,5 @@ impl Env {
         self.action_history.clone()
     }
 
-    pub fn restore(&mut self) {}
+    pub fn restore(&mut self, checkpoint_data: Vec<u32>) {}
 }

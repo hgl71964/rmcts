@@ -1,3 +1,4 @@
+use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -82,6 +83,7 @@ impl Node {
     }
 
     pub fn shallow_clone(&self) -> NodeStub {
+        // NOTE: the stub only needs to know whether a child exists or not
         let children: Vec<u32> = self
             .children
             .iter()
@@ -169,4 +171,30 @@ pub struct NodeStub {
     pub children_complete_visit_count: Vec<u32>,
     pub visited_node_count: u32,
     pub updated_node_count: u32,
+}
+
+impl NodeStub {
+    pub fn select_expansion_action(&self) -> u32 {
+        let mut cnt = 0;
+        let mut rng = rand::thread_rng();
+        let mut action: usize = 0;
+        loop {
+            if cnt < 20 {
+                action = rng.gen_range(0..(self.action_n as usize));
+            }
+
+            if cnt > 100 {
+                return action as u32;
+            }
+
+            if self.children_visit_count[action] > 0 && cnt < 10 {
+                cnt += 1;
+                continue;
+            }
+
+            if self.children[action] == 0 {
+                return action as u32;
+            }
+        }
+    }
 }

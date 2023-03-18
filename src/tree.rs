@@ -12,7 +12,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 pub struct ExpTask {
-    pub ckpt: Vec<u32>,
+    pub checkpoint_data: Vec<u32>,
     pub shallow_copy_node: NodeStub,
 }
 pub struct SimTask {}
@@ -59,12 +59,14 @@ impl Tree {
                 expansion_worker_num,
                 gamma,
                 max_sim_step,
+                false,
             ),
             sim_pool: pool_manager::PoolManager::new(
                 "simulation",
                 simulation_worker_num,
                 gamma,
                 max_sim_step,
+                false,
             ),
             checkpoint_data_manager: checkpoint_manager::CheckpointerManager::new(),
 
@@ -84,11 +86,11 @@ impl Tree {
 
         // loop var
         let mut state = 0;
-        let mut reward = 0;
+        let mut reward = 0.0;
         let mut done = false;
         let mut info = HashMap::<u32, u32>::new();
         let mut cnt = 0;
-        let mut episode_reward = 0;
+        let mut episode_reward = 0.0;
 
         // env loop
         loop {
@@ -130,7 +132,7 @@ impl Tree {
         self.simulation_tasks.clear();
         self.pending_expansion_tasks.clear();
         self.pending_simulation_tasks.clear();
-        self.exp_pool.wait_for_all();
+        self.exp_pool.wait_for_all(); // TODO
         self.sim_pool.wait_for_all();
 
         // build current state
@@ -200,7 +202,7 @@ impl Tree {
                 self.expansion_tasks.insert(
                     sim_idx,
                     ExpTask {
-                        ckpt: checkpoint_data,
+                        checkpoint_data: checkpoint_data,
                         shallow_copy_node: cloned_curr_node,
                     },
                 );
@@ -242,7 +244,7 @@ impl Tree {
                     .assign_expansion_task(exp_task, self.global_saving_idx, task_idx);
                 self.global_saving_idx += 1;
             }
-
+            // update
             if self.exp_pool.occupancy() > 0.99 {
                 self.exp_pool.get_complete_expansion_task();
 
@@ -297,5 +299,26 @@ impl Tree {
     fn close(&mut self) {
         self.exp_pool.close();
         self.sim_pool.close();
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_if_map_take_ownership() {
+        println!("++++++++++++");
+        println!("test_if_map_take_ownership");
+        let a = vec![Some(1), None, Some(3)];
+        let mut children: Vec<u32> = a.iter().map(|x| if x.is_some() { 1 } else { 0 }).collect();
+        for (i, j) in children.iter_mut().enumerate() {
+            *j += 1;
+        }
+        for (i, j) in children.iter_mut().enumerate() {
+            println!("{} - {}", i, j);
+        }
+        println!("test_if_map_take_ownership done");
+        println!("++++++++++++");
     }
 }
