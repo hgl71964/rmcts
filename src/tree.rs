@@ -393,7 +393,7 @@ mod test {
         println!("test_if_map_take_ownership");
         let a = vec![Some(1), None, Some(3)];
         let mut children: Vec<u32> = a.iter().map(|x| if x.is_some() { 1 } else { 0 }).collect();
-        for (i, j) in children.iter_mut().enumerate() {
+        for (_i, j) in children.iter_mut().enumerate() {
             *j += 1;
         }
         for (i, j) in children.iter_mut().enumerate() {

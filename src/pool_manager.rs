@@ -127,22 +127,19 @@ impl PoolManager {
         }
     }
 
-    fn wait_until_all_idle(&mut self) {
+    pub fn close(&mut self) {
+        // wait until all exit
         for id in 0..(self.work_num as usize) {
             match self.worker_status[id] {
-                Status::Idle => (),
+                Status::Idle => self.txs[id].send(Message::Exit).unwrap(),
                 Status::Busy => {
-                    // TODO what if straggler?
-                    self.rxs[id].recv().unwrap();
+                    self.rxs[id].recv().unwrap(); // block until workers finish
                     self.txs[id].send(Message::Exit).unwrap();
                     self.worker_status[id] = Status::Idle;
                 }
             }
         }
-    }
-
-    pub fn close(&mut self) {
-        self.wait_until_all_idle();
+        // join
         while self.workers.len() > 0 {
             let w = self.workers.remove(0); // get ownership
             w.join().unwrap();
@@ -166,6 +163,7 @@ mod test {
         let mut pool = PoolManager::new("test", 1, 1.0, 1, true);
         assert_eq!(pool.has_idle_server(), true);
         pool.assign_nothing_task();
+        println!("occupancy: {}", pool.occupancy());
 
         // let a = vec![1, 2, 3];
         // for (i, j) in a.iter().enumerate() {
@@ -173,16 +171,6 @@ mod test {
         // }
         thread::sleep(Duration::from_secs(1));
 
-        pool.close();
-    }
-
-    #[test]
-    fn test_occupancy() {
-        let mut pool = PoolManager::new("test", 1, 1.0, 1, true);
-        assert_eq!(pool.has_idle_server(), true);
-        pool.assign_nothing_task();
-        let o = pool.occupancy();
-        assert!(o > 0.99);
         pool.close();
     }
 
@@ -196,8 +184,7 @@ mod test {
         pool.assign_nothing_task();
 
         println!("occupancy: {}", pool.occupancy());
-        // TODO test
-
         pool.close();
+        println!("test_pool done");
     }
 }

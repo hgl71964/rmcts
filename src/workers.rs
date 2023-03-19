@@ -5,6 +5,7 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 
 pub enum Message {
     Exit,
@@ -123,7 +124,12 @@ pub fn worker_loop(
                         .unwrap();
                 }
 
-                Message::Nothing => tx2.send(Reply::OK).unwrap(),
+                Message::Nothing => {
+                    // act as random straggler
+                    let mut rng = rand::thread_rng();
+                    thread::sleep(Duration::from_secs(rng.gen_range(0..5)));
+                    tx2.send(Reply::OK).unwrap();
+                }
             }
         }
         println!("Worker {} Exit successfully!", id);
