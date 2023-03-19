@@ -74,7 +74,17 @@ impl PoolManager {
             .unwrap();
     }
 
-    pub fn assign_simulation_task(&mut self, sim_task: SimTask, idx: u32) {}
+    pub fn assign_simulation_task(
+        &mut self,
+        sim_task: SimTask,
+        sim_checkpoint_data: Vec<u32>,
+        task_idx: u32,
+    ) {
+        let id = self.find_idle_worker();
+        self.txs[id]
+            .send(Message::Simulation(sim_task, sim_checkpoint_data, task_idx))
+            .unwrap();
+    }
 
     pub fn assign_nothing_task(&mut self) {
         let id = self.find_idle_worker();
@@ -95,16 +105,6 @@ impl PoolManager {
     }
 
     pub fn occupancy(&mut self) -> f32 {
-        // let mut acc = 0;
-        // for (i, status) in self.worker_status.iter().enumerate() {
-        //     match status {
-        //         Status::Busy => (),
-        //         Status::Idle => {
-        //             acc+=1;
-        //         }
-        //     }
-        // }
-        // (acc as f32) / (self.work_num as f32)
         (self
             .worker_status
             .iter()
@@ -112,7 +112,7 @@ impl PoolManager {
             / (self.work_num as f32)
     }
 
-    pub fn get_complete_expansion_task(&mut self) -> Reply {
+    pub fn get_complete_task(&mut self) -> Reply {
         loop {
             for i in 0..(self.work_num as usize) {
                 let reply = self.rxs[i].try_recv(); // non-blocking

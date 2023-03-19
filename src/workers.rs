@@ -1,5 +1,8 @@
 use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
+
+use rand::Rng;
+use std::collections::HashMap;
 use std::sync::mpsc;
 use std::thread;
 
@@ -7,13 +10,13 @@ pub enum Message {
     Exit,
     Nothing,
     Expansion(ExpTask, u32, u32),
-    Simulation(SimTask),
+    Simulation(SimTask, Vec<u32>, u32),
 }
 
 pub enum Reply {
     OK,
     DoneExpansion(usize, u32, f32, bool, bool, Option<Vec<u32>>, u32, u32),
-    DoneSimulation(),
+    DoneSimulation(u32, f32),
 }
 
 pub fn worker_loop(
@@ -73,9 +76,51 @@ pub fn worker_loop(
                     .unwrap();
                 }
 
-                Message::Simulation(sim_task) => {
-                    println!("Simulation!");
-                    tx2.send(Reply::DoneSimulation()).unwrap();
+                Message::Simulation(sim_task, sim_checkpoint_data, task_idx) => {
+                    env.restore(sim_checkpoint_data);
+                    assert!(sim_task.action_applied);
+
+                    let mut cnt = 0;
+                    let mut state = 0;
+                    let mut reward = 0.0;
+                    // NOTE if already done, then this simulation will not be scheduled
+                    let mut done = false;
+                    let mut accu_reward = 0.0;
+                    let mut accu_gamma = 1.0;
+                    let mut info = HashMap::new();
+                    // start_state_value = self.get_value(state) // TODO
+                    let start_state_value = 0.0; // to tune?
+                    let factor = 1.0; //  to tune?
+                    let mut rng = rand::thread_rng();
+
+                    // env loop
+                    while !done {
+                        // random policy for now
+                        let action_n = env.get_action_space();
+                        let action = rng.gen_range(0..action_n);
+                        (state, reward, done, info) = env.step(action);
+
+                        // timeLimited truncate
+                        if cnt == max_sim_step && !done {
+                            done = true;
+                            // get the final reward TODO
+                            // reward = env.reward_func(
+                            // 	done, info, self.wrapped_env.egraph, self.wrapped_env.expr,
+                            // 	self.wrapped_env.base_cost)
+                            reward = 0.0;
+                        }
+
+                        accu_reward += reward * accu_gamma;
+                        accu_gamma *= gamma;
+                        cnt += 1;
+                    }
+
+                    //  Use V(s) to stabilize simulation return
+                    accu_reward = accu_reward * factor + start_state_value * (1.0 - factor);
+
+                    // reply
+                    tx2.send(Reply::DoneSimulation(task_idx, accu_reward))
+                        .unwrap();
                 }
 
                 Message::Nothing => tx2.send(Reply::OK).unwrap(),

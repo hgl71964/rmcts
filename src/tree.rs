@@ -185,7 +185,7 @@ impl Tree {
     }
 
     fn simulate_single_step(&mut self, sim_idx: u32) {
-        // selection
+        // Selection
         let mut curr_node: Rc<RefCell<Node>> = Rc::clone(&self.root_node);
         let mut curr_depth = 1;
         let mut rng = rand::thread_rng();
@@ -246,12 +246,9 @@ impl Tree {
                 .unwrap()
                 .clone();
             curr_node = child;
-
-            // XXX safe guard
-            break;
         }
 
-        // expansion
+        // Expansion
         if need_expansion {
             // schedule
             while !self.pending_expansion_tasks.is_empty() && self.exp_pool.has_idle_server() {
@@ -264,7 +261,7 @@ impl Tree {
             }
             // update
             if self.exp_pool.occupancy() > 0.99 {
-                let reply = self.exp_pool.get_complete_expansion_task();
+                let reply = self.exp_pool.get_complete_task();
                 if let Reply::DoneExpansion(
                     expand_action,
                     next_state,
@@ -328,12 +325,29 @@ impl Tree {
             self.simulation_count += 1;
         }
 
-        // simulation
+        // Simulation
+        // schedule
         while !self.pending_simulation_tasks.is_empty() && self.sim_pool.has_idle_server() {
+            // pop a task
             let task_idx = self.pending_simulation_tasks.pop_front().unwrap();
+            let sim_task = self.simulation_tasks.remove(&task_idx).unwrap();
+            let curr_node_copy = Rc::clone(self.simulation_nodes_copy.get(&task_idx).unwrap());
+            let sim_checkpoint_data = self.checkpoint_data_manager.retrieve(sim_task.saving_idx);
+            // schedule
+            self.sim_pool
+                .assign_simulation_task(sim_task, sim_checkpoint_data, task_idx);
+            // incomplete update
+            self.incomplete_update(Rc::clone(&curr_node_copy), task_idx);
         }
-
-        if self.sim_pool.occupancy() > 0.99 {}
+        // update
+        if self.sim_pool.occupancy() > 0.99 {
+            let reply = self.sim_pool.get_complete_task();
+            if let Reply::DoneSimulation(task_idx, accu_reward) = reply {
+                // TODO
+            } else {
+                panic!("DoneSimulation destructure fails");
+            }
+        }
     }
 
     fn max_action(&self) -> usize {
@@ -383,6 +397,18 @@ mod test {
             println!("{} - {}", i, j);
         }
         println!("test_if_map_take_ownership done");
+        println!("++++++++++++");
+    }
+
+    #[test]
+    fn test_rand() {
+        println!("++++++++++++");
+        println!("test_rand");
+        let mut rng = rand::thread_rng();
+        for i in 0..5 {
+            println!("rand gen {} ", rng.gen_range(0..10));
+        }
+        println!("test_rand done");
         println!("++++++++++++");
     }
 }

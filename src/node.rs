@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct Node {
-    pub action_n: u32,
+    pub action_n: usize,
     pub checkpoint_idx: u32,
     pub parent: Option<Rc<RefCell<Node>>>,
     pub gamma: f32,
@@ -23,25 +23,30 @@ pub struct Node {
     // self
     visit_count: u32,
     traverse_history: HashMap<u32, (usize, f32)>,
-    visited_node_count: u32,
-    updated_node_count: u32,
+    visited_node_count: usize,
+    updated_node_count: usize,
 }
 
 impl Node {
-    pub fn new(action_n: u32, checkpoint_idx: u32, gamma: f32, is_head: bool) -> Rc<RefCell<Self>> {
+    pub fn new(
+        action_n: usize,
+        checkpoint_idx: u32,
+        gamma: f32,
+        is_head: bool,
+    ) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Node {
             action_n: action_n,
             checkpoint_idx: checkpoint_idx,
             parent: None,
             gamma: gamma,
             is_head: is_head,
-            children: vec![None; usize::try_from(action_n).unwrap()],
-            rewards: vec![0.0; usize::try_from(action_n).unwrap()],
-            dones: vec![false; usize::try_from(action_n).unwrap()],
-            children_visit_count: vec![0; usize::try_from(action_n).unwrap()],
-            children_complete_visit_count: vec![0; usize::try_from(action_n).unwrap()],
-            children_saturated: vec![false; usize::try_from(action_n).unwrap()],
-            q_value: vec![0.0; usize::try_from(action_n).unwrap()],
+            children: vec![None; action_n],
+            rewards: vec![0.0; action_n],
+            dones: vec![false; action_n],
+            children_visit_count: vec![0; action_n],
+            children_complete_visit_count: vec![0; action_n],
+            children_saturated: vec![false; action_n],
+            q_value: vec![0.0; action_n],
             visit_count: 0,
             traverse_history: HashMap::new(),
             visited_node_count: 0,
@@ -91,15 +96,15 @@ impl Node {
             .collect();
         NodeStub {
             action_n: self.action_n,
-            checkpoint_idx: self.checkpoint_idx,
-            gamma: self.gamma,
+            // checkpoint_idx: self.checkpoint_idx,
+            // gamma: self.gamma,
             is_head: self.is_head,
             children: children,
 
             children_visit_count: self.children_visit_count.clone(),
-            children_complete_visit_count: self.children_complete_visit_count.clone(),
-            visited_node_count: self.visited_node_count,
-            updated_node_count: self.updated_node_count,
+            // children_complete_visit_count: self.children_complete_visit_count.clone(),
+            // visited_node_count: self.visited_node_count,
+            // updated_node_count: self.updated_node_count,
         }
     }
 
@@ -181,16 +186,14 @@ impl Node {
 
 #[derive(Debug, Clone)]
 pub struct NodeStub {
-    pub action_n: u32,
-    pub checkpoint_idx: u32,
-    pub gamma: f32,
+    pub action_n: usize,
     pub is_head: bool,
 
     pub children: Vec<u32>,
     pub children_visit_count: Vec<u32>,
-    pub children_complete_visit_count: Vec<u32>,
-    pub visited_node_count: u32,
-    pub updated_node_count: u32,
+    // pub children_complete_visit_count: Vec<u32>,
+    // pub visited_node_count: u32,
+    // pub updated_node_count: u32,
 }
 
 impl NodeStub {
@@ -200,7 +203,7 @@ impl NodeStub {
         let mut action: usize = 0;
         loop {
             if cnt < 20 {
-                action = rng.gen_range(0..(self.action_n as usize));
+                action = rng.gen_range(0..self.action_n);
             }
 
             if cnt > 100 {

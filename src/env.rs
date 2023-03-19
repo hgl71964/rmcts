@@ -16,7 +16,7 @@ impl Env {
         (0, 0.0, true, HashMap::new())
     }
 
-    pub fn get_action_space(&self) -> u32 {
+    pub fn get_action_space(&self) -> usize {
         2
     }
 
