@@ -109,7 +109,7 @@ impl Node {
         }
     }
 
-    pub fn selection_action(&self) -> usize {
+    pub fn select_action(&self) -> usize {
         let mut best_score = std::f32::MIN;
         let mut best_action = 0;
 
@@ -135,8 +135,27 @@ impl Node {
     }
 
     pub fn selection_max_action(&self) -> usize {
-        // TODO
-        0
+        let mut best_score = std::f32::MIN;
+        let mut best_action = 0;
+
+        for action in 0..(self.action_n as usize) {
+            if self.children_saturated[action] {
+                continue;
+            }
+            if self.children[action].is_none() {
+                continue;
+            }
+
+            let exploit_score =
+                self.q_value[action] / (self.children_complete_visit_count[action] as f32);
+            let score = exploit_score;
+
+            if score > best_score {
+                best_score = score;
+                best_action = action;
+            }
+        }
+        best_action
     }
 
     pub fn update_history(&mut self, idx: u32, action_taken: usize, reward: f32) {
@@ -170,9 +189,25 @@ impl Node {
         }
     }
 
-    pub fn update_incomplete(&mut self, idx: u32) {}
+    pub fn update_incomplete(&mut self, idx: u32) {
+        let (action_taken, reward) = self.traverse_history.get(&idx).unwrap().clone();
+        if self.children_visit_count[action_taken] == 0 {
+            self.visited_node_count += 1;
+        }
+        self.children_visit_count[action_taken] += 1;
+        self.visit_count += 1;
+    }
 
-    pub fn update_complete(&mut self, idx: u32, accu_reward: f32) {}
+    pub fn update_complete(&mut self, idx: u32, accu_reward: f32) -> f32 {
+        let (action_taken, reward) = self.traverse_history.remove(&idx).unwrap();
+        let this_accu_reward = reward + self.gamma * accu_reward;
+        if self.children_complete_visit_count[action_taken] == 0 {
+            self.updated_node_count += 1
+        }
+        self.children_complete_visit_count[action_taken] += 1;
+        self.q_value[action_taken] += this_accu_reward;
+        this_accu_reward
+    }
 }
 
 // impl PartialEq for Node {

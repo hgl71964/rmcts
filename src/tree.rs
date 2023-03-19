@@ -219,7 +219,7 @@ impl Tree {
                 break;
             }
 
-            let action = curr_node.borrow().selection_action();
+            let action = curr_node.borrow().select_action();
             curr_node.borrow_mut().update_history(
                 sim_idx,
                 action,
@@ -367,14 +367,17 @@ impl Tree {
     }
 
     fn complete_update(&mut self, mut curr_node: Rc<RefCell<Node>>, idx: u32, accu_reward: f32) {
+        let mut rolling_accu_reward = accu_reward;
         while !curr_node.borrow().is_head {
-            curr_node.borrow_mut().update_complete(idx, accu_reward);
+            rolling_accu_reward = curr_node
+                .borrow_mut()
+                .update_complete(idx, rolling_accu_reward);
             let parent: Rc<RefCell<Node>> = curr_node.borrow().parent.as_ref().unwrap().clone();
             curr_node = parent;
         }
         self.root_node
             .borrow_mut()
-            .update_complete(idx, accu_reward);
+            .update_complete(idx, rolling_accu_reward);
     }
 
     fn close(&mut self) {
