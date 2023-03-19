@@ -16,6 +16,8 @@ pub struct ExpTask {
     pub checkpoint_data: Vec<u32>,
     pub shallow_copy_node: NodeStub,
 }
+
+#[derive(Debug, Clone)]
 pub struct SimTask {
     pub action: usize,
     pub saving_idx: u32,
@@ -31,6 +33,7 @@ pub struct Tree {
     expansion_worker_num: u32,
     simulation_worker_num: u32,
 
+    // data and concurrency
     exp_pool: pool_manager::PoolManager,
     sim_pool: pool_manager::PoolManager,
     checkpoint_data_manager: checkpoint_manager::CheckpointerManager,
@@ -78,7 +81,7 @@ impl Tree {
             ),
             checkpoint_data_manager: checkpoint_manager::CheckpointerManager::new(),
 
-            root_node: Node::default(),
+            root_node: Node::dummy(),
             global_saving_idx: 0,
             simulation_count: 0,
             expansion_tasks: HashMap::new(),
@@ -150,7 +153,7 @@ impl Tree {
         // build current state
         self.checkpoint_data_manager
             .checkpoint_env(self.global_saving_idx, env.checkpoint());
-        self.root_node = Node::new(action_n, self.global_saving_idx, self.gamma, true);
+        self.root_node = Node::new(action_n, self.global_saving_idx, self.gamma, true, None);
         self.global_saving_idx += 1;
 
         // run main mcts
@@ -171,17 +174,7 @@ impl Tree {
 
         // retrieve
         // self.checkpoint_data_manager.load_checkpoint_env(self.root_node.checkpoint_idx);
-
-        // debug!!
-        // let v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        // let v2: Vec<_> = v.iter().filter_map(|&x| if x % 2 == 0 { Some(x) } else { None }).collect();
-        // println!("{:?}", v2);
-
-        // let v3 = vec![Some(1), None];
-        // let v4: Vec<_> = v3.iter().filter_map(|&x| if x.is_some() {x} else {None}).collect();
-        // println!("{:?}", v4);
-
-        self.max_action()
+        self.root_node.borrow().selection_max_action()
     }
 
     fn simulate_single_step(&mut self, sim_idx: u32) {
@@ -289,6 +282,7 @@ impl Tree {
                             saving_idx,
                             self.gamma,
                             child_saturated,
+                            Rc::clone(&curr_node_copy),
                         );
                         self.incomplete_update(Rc::clone(&curr_node_copy), task_idx);
                         self.complete_update(Rc::clone(&curr_node_copy), task_idx, 0.0); // TODO update with 0 accu_reward??
@@ -330,7 +324,7 @@ impl Tree {
         while !self.pending_simulation_tasks.is_empty() && self.sim_pool.has_idle_server() {
             // pop a task
             let task_idx = self.pending_simulation_tasks.pop_front().unwrap();
-            let sim_task = self.simulation_tasks.remove(&task_idx).unwrap();
+            let sim_task = self.simulation_tasks.get(&task_idx).unwrap().clone();
             let curr_node_copy = Rc::clone(self.simulation_nodes_copy.get(&task_idx).unwrap());
             let sim_checkpoint_data = self.checkpoint_data_manager.retrieve(sim_task.saving_idx);
             // schedule
@@ -343,15 +337,24 @@ impl Tree {
         if self.sim_pool.occupancy() > 0.99 {
             let reply = self.sim_pool.get_complete_task();
             if let Reply::DoneSimulation(task_idx, accu_reward) = reply {
-                // TODO
+                // fetch
+                let sim_task = self.simulation_tasks.remove(&task_idx).unwrap();
+                let curr_node_copy = self.simulation_nodes_copy.remove(&task_idx).unwrap();
+                assert!(sim_task.action_applied);
+                // add-child
+                curr_node_copy.borrow_mut().add_child(
+                    sim_task.action,
+                    sim_task.saving_idx,
+                    self.gamma,
+                    sim_task.child_saturated,
+                    Rc::clone(&curr_node_copy),
+                );
+                self.complete_update(Rc::clone(&curr_node), task_idx, accu_reward);
+                self.simulation_count += 1;
             } else {
                 panic!("DoneSimulation destructure fails");
             }
         }
-    }
-
-    fn max_action(&self) -> usize {
-        0
     }
 
     fn incomplete_update(&mut self, mut curr_node: Rc<RefCell<Node>>, idx: u32) {
@@ -405,7 +408,7 @@ mod test {
         println!("++++++++++++");
         println!("test_rand");
         let mut rng = rand::thread_rng();
-        for i in 0..5 {
+        for _ in 0..5 {
             println!("rand gen {} ", rng.gen_range(0..10));
         }
         println!("test_rand done");

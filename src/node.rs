@@ -33,11 +33,12 @@ impl Node {
         checkpoint_idx: u32,
         gamma: f32,
         is_head: bool,
+        parent: Option<Rc<RefCell<Node>>>,
     ) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Node {
             action_n: action_n,
             checkpoint_idx: checkpoint_idx,
-            parent: None,
+            parent: parent,
             gamma: gamma,
             is_head: is_head,
             children: vec![None; action_n],
@@ -54,20 +55,20 @@ impl Node {
         }))
     }
 
-    pub fn default() -> Rc<RefCell<Self>> {
+    pub fn dummy() -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Node {
             action_n: 0,
             checkpoint_idx: 0,
             parent: None,
             gamma: 1.0,
             is_head: false,
-            children: vec![None; usize::try_from(1).unwrap()],
-            rewards: vec![0.0; usize::try_from(1).unwrap()],
-            dones: vec![false; usize::try_from(1).unwrap()],
-            children_visit_count: vec![0; usize::try_from(1).unwrap()],
-            children_complete_visit_count: vec![0; usize::try_from(1).unwrap()],
-            children_saturated: vec![false; usize::try_from(1).unwrap()],
-            q_value: vec![0.0; usize::try_from(1).unwrap()],
+            children: vec![None; 1],
+            rewards: vec![0.0; 1],
+            dones: vec![false; 1],
+            children_visit_count: vec![0; 1],
+            children_complete_visit_count: vec![0; 1],
+            children_saturated: vec![false; 1],
+            q_value: vec![0.0; 1],
             visit_count: 0,
             traverse_history: HashMap::new(),
             visited_node_count: 0,
@@ -133,6 +134,11 @@ impl Node {
         best_action
     }
 
+    pub fn selection_max_action(&self) -> usize {
+        // TODO
+        0
+    }
+
     pub fn update_history(&mut self, idx: u32, action_taken: usize, reward: f32) {
         self.traverse_history.insert(idx, (action_taken, reward));
     }
@@ -143,6 +149,7 @@ impl Node {
         saving_idx: u32,
         gamma: f32,
         child_saturated: bool,
+        self_node: Rc<RefCell<Node>>,
     ) {
         if child_saturated {
             assert!(self.is_head);
@@ -151,25 +158,17 @@ impl Node {
 
         match &self.children[expand_action] {
             None => {
-                self.children[expand_action] =
-                    Some(Node::new(self.action_n, saving_idx, gamma, false))
+                self.children[expand_action] = Some(Node::new(
+                    self.action_n,
+                    saving_idx,
+                    gamma,
+                    false,
+                    Some(self_node),
+                ))
             }
-            Some(child) => (), // FIXME this should be a bug?
+            Some(child) => (), // FIXME if this happens should be a bug?
         }
     }
-
-    // pub fn child_ref(&mut self, action: usize) -> Result<&mut Box<Node>, ()> {
-    //     match &mut self.children[action] {
-    //         Some(e) => Ok(e),
-    //         None => Err(()),
-    //     }
-    // }
-    // pub fn parent_ref(&mut self) -> Result<&mut Box<Node>, ()> {
-    //     match &mut self.parent {
-    //         Some(e) => Ok(e),
-    //         None => Err(()),
-    //     }
-    // }
 
     pub fn update_incomplete(&mut self, idx: u32) {}
 
