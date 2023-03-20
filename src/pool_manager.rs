@@ -95,7 +95,7 @@ impl PoolManager {
                 }
             }
         }
-        panic!("no idle worker");
+        unreachable!("no idle worker");
     }
 
     pub fn occupancy(&mut self) -> f32 {
@@ -132,8 +132,6 @@ impl PoolManager {
             }
         }
     }
-
-    pub fn kill_stragger(&mut self) {}
 
     pub fn close(&mut self) {
         // wait until all exit

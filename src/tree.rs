@@ -161,11 +161,10 @@ impl Tree {
             "[WU-UCT] complete count {}/{} ",
             self.simulation_count, self.budget
         );
-
         thread::sleep(Duration::from_secs(1));
 
-        self.exp_pool.kill_stragger();
-        self.sim_pool.kill_stragger();
+        // TODO: it is a bad idea to termiante a thread, perhaps just timeout a function in worker
+        // thread, as a way to handle stragger
 
         // final action
         self.root_node.borrow().select_uct_max_action()
