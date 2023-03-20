@@ -109,10 +109,9 @@ impl Node {
         }
     }
 
-    pub fn select_action(&self) -> usize {
+    pub fn select_uct_action(&self) -> usize {
         let mut best_score = std::f32::MIN;
         let mut best_action = 0;
-
         for action in 0..(self.action_n as usize) {
             if self.children[action].is_none() {
                 continue;
@@ -134,10 +133,9 @@ impl Node {
         best_action
     }
 
-    pub fn selection_max_action(&self) -> usize {
+    pub fn select_uct_max_action(&self) -> usize {
         let mut best_score = std::f32::MIN;
         let mut best_action = 0;
-
         for action in 0..(self.action_n as usize) {
             if self.children_saturated[action] {
                 continue;

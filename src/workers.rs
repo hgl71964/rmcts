@@ -21,7 +21,7 @@ pub enum Reply {
 }
 
 pub fn worker_loop(
-    id: u32,
+    id: usize,
     gamma: f32,
     max_sim_step: u32,
     verbose: bool,
@@ -84,8 +84,7 @@ pub fn worker_loop(
                     let mut cnt = 0;
                     let mut state = 0;
                     let mut reward = 0.0;
-                    // NOTE if already done, then this simulation will not be scheduled
-                    let mut done = false;
+                    let mut done = false; // NOTE if already done, then this simulation will not be scheduled
                     let mut accu_reward = 0.0;
                     let mut accu_gamma = 1.0;
                     let mut info = HashMap::new();
@@ -96,7 +95,7 @@ pub fn worker_loop(
 
                     // env loop
                     while !done {
-                        // random policy for now
+                        // random policy rollouts
                         let action_n = env.get_action_space();
                         let action = rng.gen_range(0..action_n);
                         (state, reward, done, info) = env.step(action);

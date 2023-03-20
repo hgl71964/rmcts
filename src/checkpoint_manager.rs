@@ -27,9 +27,4 @@ impl CheckpointerManager {
         let q = self.buffer.get(&global_saving_idx);
         q.unwrap().clone()
     }
-
-    // pub fn restore(&mut self, global_saving_idx: u32, ) {
-    // }
-
-    pub fn load_checkpoint_env(&mut self) {}
 }

@@ -11,6 +11,7 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 use std::thread;
 use std::time::{Duration, Instant};
+// use log::info;
 
 pub struct ExpTask {
     pub checkpoint_data: Vec<u32>,
@@ -30,8 +31,8 @@ pub struct Tree {
     budget: u32,
     max_sim_step: u32,
     gamma: f32,
-    expansion_worker_num: u32,
-    simulation_worker_num: u32,
+    expansion_worker_num: usize,
+    simulation_worker_num: usize,
 
     // data and concurrency
     exp_pool: pool_manager::PoolManager,
@@ -55,8 +56,8 @@ impl Tree {
         budget: u32,
         max_sim_step: u32,
         gamma: f32,
-        expansion_worker_num: u32,
-        simulation_worker_num: u32,
+        expansion_worker_num: usize,
+        simulation_worker_num: usize,
     ) -> Self {
         Tree {
             budget: budget,
@@ -147,8 +148,8 @@ impl Tree {
         self.simulation_nodes_copy.clear();
         self.pending_expansion_tasks.clear();
         self.pending_simulation_tasks.clear();
-        self.exp_pool.wait_for_all(); // TODO
-        self.sim_pool.wait_for_all();
+        self.exp_pool.wait_until_all_idle();
+        self.sim_pool.wait_until_all_idle();
 
         // build current state
         self.checkpoint_data_manager
@@ -161,7 +162,7 @@ impl Tree {
             self.simulate_single_step(sim_idx);
         }
 
-        //
+        // clean up
         println!(
             "[WU-UCT] complete count {}/{} ",
             self.simulation_count, self.budget
@@ -172,9 +173,8 @@ impl Tree {
         self.exp_pool.kill_stragger();
         self.sim_pool.kill_stragger();
 
-        // retrieve
-        // self.checkpoint_data_manager.load_checkpoint_env(self.root_node.checkpoint_idx);
-        self.root_node.borrow().selection_max_action()
+        // final action
+        self.root_node.borrow().select_uct_max_action()
     }
 
     fn simulate_single_step(&mut self, sim_idx: u32) {
@@ -187,10 +187,9 @@ impl Tree {
         loop {
             let rand = rng.gen_range(0.0..1.0);
             if (curr_node.borrow().no_child_available())
-                || ((!curr_node.borrow().all_child_visited())
-                    && !curr_node.borrow().is_head
+                || (curr_node.borrow().is_head && (!curr_node.borrow().all_child_visited()))
+                || ((!curr_node.borrow().is_head && !curr_node.borrow().all_child_visited())
                     && rand < 0.5)
-                || ((!curr_node.borrow().all_child_visited()) && curr_node.borrow().is_head)
             {
                 // If no child node has been updated, we have to expand anyway.
                 // Or if root node is not fully visited.
@@ -200,7 +199,6 @@ impl Tree {
                 let checkpoint_data = self
                     .checkpoint_data_manager
                     .retrieve(curr_node.borrow().checkpoint_idx);
-
                 // println!("{:?}", curr_node.children);
 
                 // Record the task
@@ -219,7 +217,7 @@ impl Tree {
                 break;
             }
 
-            let action = curr_node.borrow().select_action();
+            let action = curr_node.borrow().select_uct_action();
             curr_node.borrow_mut().update_history(
                 sim_idx,
                 action,
@@ -360,7 +358,7 @@ impl Tree {
     fn incomplete_update(&mut self, mut curr_node: Rc<RefCell<Node>>, idx: u32) {
         while !curr_node.borrow().is_head {
             curr_node.borrow_mut().update_incomplete(idx);
-            let parent: Rc<RefCell<Node>> = curr_node.borrow().parent.as_ref().unwrap().clone();
+            let parent: Rc<RefCell<Node>> = Rc::clone(curr_node.borrow().parent.as_ref().unwrap());
             curr_node = parent;
         }
         self.root_node.borrow_mut().update_incomplete(idx);
@@ -372,7 +370,7 @@ impl Tree {
             rolling_accu_reward = curr_node
                 .borrow_mut()
                 .update_complete(idx, rolling_accu_reward);
-            let parent: Rc<RefCell<Node>> = curr_node.borrow().parent.as_ref().unwrap().clone();
+            let parent: Rc<RefCell<Node>> = Rc::clone(curr_node.borrow().parent.as_ref().unwrap());
             curr_node = parent;
         }
         self.root_node

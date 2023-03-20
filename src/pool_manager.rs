@@ -12,7 +12,7 @@ enum Status {
 
 pub struct PoolManager {
     name: &'static str,
-    work_num: u32, // TODO determine this automatically
+    work_num: usize, // TODO determine this automatically
     gamma: f32,
     max_sim_step: u32,
 
@@ -26,7 +26,7 @@ pub struct PoolManager {
 impl PoolManager {
     pub fn new(
         name: &'static str,
-        work_num: u32,
+        work_num: usize,
         gamma: f32,
         max_sim_step: u32,
         verbose: bool,
@@ -48,15 +48,11 @@ impl PoolManager {
             gamma: gamma,
             max_sim_step: max_sim_step,
             workers: workers,
-            worker_status: vec![Status::Idle; usize::try_from(work_num).unwrap()],
+            worker_status: vec![Status::Idle; work_num],
             txs: txs,
             rxs: rxs,
         }
     }
-
-    pub fn wait_for_all(&self) {}
-
-    pub fn kill_stragger(&mut self) {}
 
     pub fn has_idle_server(&mut self) -> bool {
         self.worker_status.contains(&Status::Idle)
@@ -114,7 +110,7 @@ impl PoolManager {
 
     pub fn get_complete_task(&mut self) -> Reply {
         loop {
-            for i in 0..(self.work_num as usize) {
+            for i in 0..self.work_num {
                 let reply = self.rxs[i].try_recv(); // non-blocking
                 match reply {
                     Err(_) => (),
@@ -127,9 +123,23 @@ impl PoolManager {
         }
     }
 
+    pub fn wait_until_all_idle(&mut self) {
+        for id in 0..self.work_num {
+            match self.worker_status[id] {
+                Status::Idle => (),
+                Status::Busy => {
+                    self.rxs[id].recv().unwrap(); // block until workers finish
+                    self.worker_status[id] = Status::Idle;
+                }
+            }
+        }
+    }
+
+    pub fn kill_stragger(&mut self) {}
+
     pub fn close(&mut self) {
         // wait until all exit
-        for id in 0..(self.work_num as usize) {
+        for id in 0..self.work_num {
             match self.worker_status[id] {
                 Status::Idle => self.txs[id].send(Message::Exit).unwrap(),
                 Status::Busy => {
@@ -164,6 +174,8 @@ mod test {
         assert_eq!(pool.has_idle_server(), true);
         pool.assign_nothing_task();
         println!("occupancy: {}", pool.occupancy());
+        pool.get_complete_task();
+        println!("after occupancy: {}", pool.occupancy());
 
         // let a = vec![1, 2, 3];
         // for (i, j) in a.iter().enumerate() {
