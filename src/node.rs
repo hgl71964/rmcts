@@ -84,9 +84,9 @@ impl Node {
         self.updated_node_count == 0
     }
 
-    pub fn all_child_updated(&self) -> bool {
-        self.updated_node_count == self.action_n
-    }
+    // pub fn all_child_updated(&self) -> bool {
+    //     self.updated_node_count == self.action_n
+    // }
 
     pub fn shallow_clone(&self) -> NodeStub {
         // NOTE: the stub only needs to know whether a child exists or not
@@ -183,12 +183,12 @@ impl Node {
                     Some(self_node),
                 ))
             }
-            Some(child) => (), // FIXME if this happens should be a bug?
+            Some(_child) => (), // FIXME if this happens should be a bug?
         }
     }
 
     pub fn update_incomplete(&mut self, idx: u32) {
-        let (action_taken, reward) = self.traverse_history.get(&idx).unwrap().clone();
+        let (action_taken, _) = self.traverse_history.get(&idx).unwrap().clone();
         if self.children_visit_count[action_taken] == 0 {
             self.visited_node_count += 1;
         }

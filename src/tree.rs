@@ -29,10 +29,7 @@ pub struct SimTask {
 pub struct Tree {
     // from param
     budget: u32,
-    max_sim_step: u32,
     gamma: f32,
-    expansion_worker_num: usize,
-    simulation_worker_num: usize,
 
     // data and concurrency
     exp_pool: pool_manager::PoolManager,
@@ -61,10 +58,7 @@ impl Tree {
     ) -> Self {
         Tree {
             budget: budget,
-            max_sim_step: max_sim_step,
             gamma: gamma,
-            expansion_worker_num: expansion_worker_num,
-            simulation_worker_num: simulation_worker_num,
 
             exp_pool: pool_manager::PoolManager::new(
                 "expansion",
@@ -180,9 +174,10 @@ impl Tree {
     fn simulate_single_step(&mut self, sim_idx: u32) {
         // Selection
         let mut curr_node: Rc<RefCell<Node>> = Rc::clone(&self.root_node);
+        #[allow(unused_variables)]
         let mut curr_depth = 1;
         let mut rng = rand::thread_rng();
-        let mut need_expansion = false;
+        let mut need_expansion: bool;
 
         loop {
             let rand = rng.gen_range(0.0..1.0);

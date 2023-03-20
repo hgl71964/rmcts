@@ -11,10 +11,9 @@ enum Status {
 }
 
 pub struct PoolManager {
+    #[allow(unused_variables)]
     name: &'static str,
     work_num: usize, // TODO determine this automatically
-    gamma: f32,
-    max_sim_step: u32,
 
     // self
     workers: Vec<thread::JoinHandle<()>>,
@@ -45,8 +44,6 @@ impl PoolManager {
         PoolManager {
             name: name,
             work_num: work_num,
-            gamma: gamma,
-            max_sim_step: max_sim_step,
             workers: workers,
             worker_status: vec![Status::Idle; work_num],
             txs: txs,
@@ -82,6 +79,7 @@ impl PoolManager {
             .unwrap();
     }
 
+    #[allow(dead_code)]
     pub fn assign_nothing_task(&mut self) {
         let id = self.find_idle_worker();
         self.txs[id].send(Message::Nothing).unwrap();

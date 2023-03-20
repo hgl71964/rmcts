@@ -9,6 +9,7 @@ use std::time::Duration;
 
 pub enum Message {
     Exit,
+    #[allow(unused_variables)]
     Nothing,
     Expansion(ExpTask, u32, u32),
     Simulation(SimTask, Vec<u32>, u32),
@@ -51,7 +52,7 @@ pub fn worker_loop(
                     env.restore(exp_task.checkpoint_data);
                     let expand_action = exp_task.shallow_copy_node.select_expansion_action();
                     let (next_state, reward, done, info) = env.step(expand_action);
-                    let mut new_checkpoint_data: Option<Vec<u32>>;
+                    let new_checkpoint_data: Option<Vec<u32>>;
                     if done {
                         new_checkpoint_data = None;
                     } else {
