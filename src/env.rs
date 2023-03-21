@@ -1,3 +1,4 @@
+use egg::{Analysis, EGraph, Language, Rewrite, Runner};
 use std::collections::HashMap;
 
 pub struct Env {
@@ -5,14 +6,14 @@ pub struct Env {
 }
 
 impl Env {
-    pub fn new() -> Self {
+    pub fn new<L: Language, N: Analysis<L>>(expr: &str, rules: Vec<Rewrite<L, N>>) -> Self {
         Env {
             action_history: Vec::new(),
         }
     }
-    pub fn reset(&self) {}
+    pub fn reset(&mut self) {}
 
-    pub fn step(&self, action: usize) -> (u32, f32, bool, HashMap<u32, u32>) {
+    pub fn step(&mut self, action: usize) -> (u32, f32, bool, HashMap<u32, u32>) {
         (0, 0.0, true, HashMap::new())
     }
 

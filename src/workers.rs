@@ -1,6 +1,7 @@
 use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
 
+use egg::{Analysis, Language, Rewrite};
 use rand::Rng;
 use std::collections::HashMap;
 use std::sync::mpsc;
@@ -21,17 +22,19 @@ pub enum Reply {
     DoneSimulation(u32, f32),
 }
 
-pub fn worker_loop(
+pub fn worker_loop<L: Language, N: Analysis<L> + Clone>(
     id: usize,
     gamma: f32,
     max_sim_step: u32,
     verbose: bool,
+    expr: &str,
+    rules: Vec<Rewrite<L, N>>,
 ) -> (
     thread::JoinHandle<()>,
     mpsc::Sender<Message>,
     mpsc::Receiver<Reply>,
 ) {
-    let mut env = Env::new();
+    let mut env = Env::new(expr, rules);
 
     let (tx, rx) = mpsc::channel();
     let (tx2, rx2) = mpsc::channel();

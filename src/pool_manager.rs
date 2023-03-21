@@ -1,6 +1,7 @@
 use crate::tree::{ExpTask, SimTask};
 use crate::workers::{worker_loop, Message, Reply};
 
+use egg::{Analysis, Language, Rewrite};
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
@@ -23,19 +24,21 @@ pub struct PoolManager {
 }
 
 impl PoolManager {
-    pub fn new(
+    pub fn new<L: Language, N: Analysis<L> + Clone>(
         name: &'static str,
         work_num: usize,
         gamma: f32,
         max_sim_step: u32,
         verbose: bool,
+        expr: &str,
+        rules: Vec<Rewrite<L, N>>,
     ) -> Self {
         // build workers
         let mut workers = Vec::new();
         let mut txs = Vec::new();
         let mut rxs = Vec::new();
         for i in 0..work_num {
-            let (w, tx, rx) = worker_loop(i, gamma, max_sim_step, verbose);
+            let (w, tx, rx) = worker_loop(i, gamma, max_sim_step, verbose, expr, rules.clone());
             workers.push(w);
             txs.push(tx);
             rxs.push(rx);
@@ -161,12 +164,32 @@ mod test {
     // use std::sync::atomic::{AtomicUsize, Ordering};
     // use std::sync::mpsc::{channel, sync_channel};
     // use std::sync::{Arc, Barrier};
+    use egg::*;
     use std::thread::sleep;
     use std::time::Duration;
 
+    define_language! {
+        enum SimpleLanguage {
+            Num(i32),
+            "+" = Add([Id; 2]),
+            "*" = Mul([Id; 2]),
+            Symbol(Symbol),
+        }
+    }
+
+    fn make_rules() -> Vec<Rewrite<SimpleLanguage, ()>> {
+        vec![
+            rewrite!("commute-add"; "(+ ?a ?b)" => "(+ ?b ?a)"),
+            rewrite!("commute-mul"; "(* ?a ?b)" => "(* ?b ?a)"),
+            rewrite!("add-0"; "(+ ?a 0)" => "?a"),
+            rewrite!("mul-0"; "(* ?a 0)" => "0"),
+            rewrite!("mul-1"; "(* ?a 1)" => "?a"),
+        ]
+    }
+
     #[test]
     fn test_build_and_close() {
-        let mut pool = PoolManager::new("test", 1, 1.0, 1, true);
+        let mut pool = PoolManager::new("test", 1, 1.0, 1, true, "(* 0 42)", make_rules());
         assert_eq!(pool.has_idle_server(), true);
         pool.assign_nothing_task();
         println!("occupancy: {}", pool.occupancy());
@@ -185,7 +208,7 @@ mod test {
     #[test]
     fn test_poll_channel() {
         let worker_num = 5;
-        let mut pool = PoolManager::new("test", worker_num, 1.0, 1, true);
+        let mut pool = PoolManager::new("test", worker_num, 1.0, 1, true, "(* 0 42)", make_rules());
         pool.assign_nothing_task();
         pool.assign_nothing_task();
         pool.assign_nothing_task();

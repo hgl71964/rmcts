@@ -4,6 +4,7 @@ use crate::node::{Node, NodeStub};
 use crate::pool_manager;
 use crate::workers::Reply;
 
+use egg::{Analysis, Language, Rewrite};
 use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -49,12 +50,14 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new(
+    pub fn new<L: Language, N: Analysis<L> + Clone>(
         budget: u32,
         max_sim_step: u32,
         gamma: f32,
         expansion_worker_num: usize,
         simulation_worker_num: usize,
+        expr: &str,
+        rules: Vec<Rewrite<L, N>>,
     ) -> Self {
         Tree {
             budget: budget,
@@ -66,6 +69,8 @@ impl Tree {
                 gamma,
                 max_sim_step,
                 false,
+                expr,
+                rules.clone(),
             ),
             sim_pool: pool_manager::PoolManager::new(
                 "simulation",
@@ -73,6 +78,8 @@ impl Tree {
                 gamma,
                 max_sim_step,
                 false,
+                expr,
+                rules.clone(),
             ),
             checkpoint_data_manager: checkpoint_manager::CheckpointerManager::new(),
 
@@ -88,9 +95,9 @@ impl Tree {
         }
     }
 
-    pub fn run_loop(&mut self) {
+    pub fn run_loop<L: Language, N: Analysis<L>>(&mut self, expr: &str, rules: Vec<Rewrite<L, N>>) {
         // env
-        let env = Env::new();
+        let mut env = Env::new(expr, rules);
 
         // loop var
         let mut state = 0;
@@ -212,11 +219,10 @@ impl Tree {
             }
 
             let action = curr_node.borrow().select_uct_action();
-            curr_node.borrow_mut().update_history(
-                sim_idx,
-                action,
-                curr_node.borrow().rewards[action].clone(),
-            );
+            let reward = curr_node.borrow().rewards[action].clone();
+            curr_node
+                .borrow_mut()
+                .update_history(sim_idx, action, reward);
 
             if curr_node.borrow().dones[action] {
                 // exceed maximum depth
