@@ -45,7 +45,9 @@ fn simple_egg_test() {
     assert_eq!(simplify("(+ 0 (* 1 foo))"), "foo");
 }
 
-// #[test]
-// fn simple_mcts_geb_test() {
-//     run::run_mcts();
-// }
+#[test]
+fn simple_mcts_geb_test() {
+    let expr = "(* 0 42)";
+    let rws = make_rules();
+    run::run_mcts(expr, rws);
+}

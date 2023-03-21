@@ -24,13 +24,13 @@ pub struct PoolManager {
 }
 
 impl PoolManager {
-    pub fn new<L: Language, N: Analysis<L> + Clone>(
+    pub fn new<L: Language + 'static, N: Analysis<L> + Clone + 'static>(
         name: &'static str,
         work_num: usize,
         gamma: f32,
         max_sim_step: u32,
         verbose: bool,
-        expr: &str,
+        expr: &'static str,
         rules: Vec<Rewrite<L, N>>,
     ) -> Self {
         // build workers

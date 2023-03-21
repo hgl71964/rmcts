@@ -22,12 +22,12 @@ pub enum Reply {
     DoneSimulation(u32, f32),
 }
 
-pub fn worker_loop<L: Language, N: Analysis<L> + Clone>(
+pub fn worker_loop<L: Language + 'static, N: Analysis<L> + Clone + 'static>(
     id: usize,
     gamma: f32,
     max_sim_step: u32,
     verbose: bool,
-    expr: &str,
+    expr: &'static str,
     rules: Vec<Rewrite<L, N>>,
 ) -> (
     thread::JoinHandle<()>,

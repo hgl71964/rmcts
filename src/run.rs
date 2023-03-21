@@ -1,7 +1,10 @@
 use crate::tree;
 use egg::{Analysis, Language, Rewrite};
 
-pub fn run_mcts<L: Language, N: Analysis<L> + Clone>(expr: &str, rules: Vec<Rewrite<L, N>>) {
+pub fn run_mcts<L: Language + 'static, N: Analysis<L> + Clone + 'static>(
+    expr: &'static str,
+    rules: Vec<Rewrite<L, N>>,
+) {
     let budget = 10;
     let max_sim_step = 5;
     let gamma = 1.0;

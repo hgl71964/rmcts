@@ -1,14 +1,18 @@
 use egg::{Analysis, EGraph, Language, Rewrite, Runner};
 use std::collections::HashMap;
 
-pub struct Env {
+pub struct Env<L, N> {
     action_history: Vec<u32>,
+    expr: &'static str,
+    rules: Vec<Rewrite<L, N>>,
 }
 
-impl Env {
-    pub fn new<L: Language, N: Analysis<L>>(expr: &str, rules: Vec<Rewrite<L, N>>) -> Self {
+impl<L: Language, N: Analysis<L> + Clone> Env<L, N> {
+    pub fn new(expr: &'static str, rules: Vec<Rewrite<L, N>>) -> Self {
         Env {
             action_history: Vec::new(),
+            expr: expr,
+            rules: rules,
         }
     }
     pub fn reset(&mut self) {}

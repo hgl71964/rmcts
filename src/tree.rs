@@ -9,6 +9,7 @@ use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use std::marker::PhantomData;
 use std::rc::Rc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -27,7 +28,7 @@ pub struct SimTask {
     pub child_saturated: bool,
 }
 
-pub struct Tree {
+pub struct Tree<L, N> {
     // from param
     budget: u32,
     gamma: f32,
@@ -47,16 +48,19 @@ pub struct Tree {
     simulation_nodes_copy: HashMap<u32, Rc<RefCell<Node>>>,
     pending_expansion_tasks: VecDeque<u32>,
     pending_simulation_tasks: VecDeque<u32>,
+
+    d1: PhantomData<L>,
+    d2: PhantomData<N>,
 }
 
-impl Tree {
-    pub fn new<L: Language, N: Analysis<L> + Clone>(
+impl<L: Language + 'static, N: Analysis<L> + Clone + 'static> Tree<L, N> {
+    pub fn new(
         budget: u32,
         max_sim_step: u32,
         gamma: f32,
         expansion_worker_num: usize,
         simulation_worker_num: usize,
-        expr: &str,
+        expr: &'static str,
         rules: Vec<Rewrite<L, N>>,
     ) -> Self {
         Tree {
@@ -92,10 +96,12 @@ impl Tree {
             simulation_nodes_copy: HashMap::new(),
             pending_expansion_tasks: VecDeque::new(),
             pending_simulation_tasks: VecDeque::new(),
+            d1: PhantomData,
+            d2: PhantomData,
         }
     }
 
-    pub fn run_loop<L: Language, N: Analysis<L>>(&mut self, expr: &str, rules: Vec<Rewrite<L, N>>) {
+    pub fn run_loop(&mut self, expr: &'static str, rules: Vec<Rewrite<L, N>>) {
         // env
         let mut env = Env::new(expr, rules);
 
@@ -132,7 +138,7 @@ impl Tree {
         self.close();
     }
 
-    fn plan(&mut self, state: &u32, env: &Env) -> usize {
+    fn plan(&mut self, state: &u32, env: &Env<L, N>) -> usize {
         // skip if action space is 1
         let action_n = env.get_action_space();
         if action_n == 1 {
