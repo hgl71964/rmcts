@@ -47,6 +47,7 @@ impl<L: Language + egg::FromOp, N: Analysis<L> + Clone + std::default::Default> 
             sat_counter: 0,
         }
     }
+
     pub fn reset(&mut self) {
         self.action_history.clear();
         self.cnt = 0;
@@ -86,9 +87,13 @@ impl<L: Language + egg::FromOp, N: Analysis<L> + Clone + std::default::Default> 
         self.cnt += 1;
         let mut done = false;
         match runner.stop_reason.unwrap() {
-            StopReason::NodeLimit(_) | StopReason::TimeLimit(_) => {
+            StopReason::NodeLimit(_) => {
                 done = true;
                 self.sat_counter = 0;
+            }
+            StopReason::TimeLimit(time) => {
+                // TODO think about how this enables dealing with straggelers!
+                panic!("egg time limit {}", time);
             }
             StopReason::Saturated => {
                 self.sat_counter += 1;
