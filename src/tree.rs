@@ -371,7 +371,7 @@ impl<
                     sim_task.child_saturated,
                     Rc::clone(&curr_node_copy),
                 );
-                self.complete_update(Rc::clone(&curr_node), task_idx, accu_reward);
+                self.complete_update(Rc::clone(&curr_node_copy), task_idx, accu_reward);
                 self.simulation_count += 1;
             } else {
                 panic!("DoneSimulation destructure fails");

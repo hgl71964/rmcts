@@ -197,7 +197,15 @@ impl Node {
     }
 
     pub fn update_complete(&mut self, idx: u32, accu_reward: f32) -> f32 {
-        let (action_taken, reward) = self.traverse_history.remove(&idx).unwrap();
+        // let (action_taken, reward) = self.traverse_history.get(&idx).unwrap().clone();
+        let (action_taken, reward);
+        match self.traverse_history.get(&idx) {
+            Some((a, r)) => {
+                action_taken = a.clone();
+                reward = r.clone();
+            }
+            None => panic!("no item {} - {}", self.checkpoint_idx, idx),
+        }
         let this_accu_reward = reward + self.gamma * accu_reward;
         if self.children_complete_visit_count[action_taken] == 0 {
             self.updated_node_count += 1
