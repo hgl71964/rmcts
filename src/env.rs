@@ -59,23 +59,23 @@ impl<L: Language + egg::FromOp, N: Analysis<L> + Clone + std::default::Default> 
         // run egg
         let egraph = std::mem::take(&mut self.egraph);
         let rule = vec![self.rules[action].clone()];
-        let mut runner: Runner<L, N> = Runner::default()
+        let runner: Runner<L, N> = Runner::default()
             .with_egraph(egraph)
             .with_iter_limit(1)
             .with_node_limit(self.node_limit)
             .with_time_limit(self.time_limit)
             .with_scheduler(SimpleScheduler)
             .run(&rule);
-        let num_applications: usize = runner
-            .iterations
-            .iter()
-            .map(|i| i.applied.values().sum::<usize>())
-            .sum();
-        let egraph_nodes: usize = runner.egraph.total_size();
-        let egraph_classes: usize = runner.egraph.number_of_classes();
+        // let num_applications: usize = runner
+        //     .iterations
+        //     .iter()
+        //     .map(|i| i.applied.values().sum::<usize>())
+        //     .sum();
+        // let egraph_nodes: usize = runner.egraph.total_size();
+        // let egraph_classes: usize = runner.egraph.number_of_classes();
 
         // run extract
-        runner.egraph.rebuild(); // invariant
+        // runner.egraph.rebuild(); // invariant
         let extractor = Extractor::new(&runner.egraph, AstSize);
         let (best_cost, _) = extractor.find_best(self.root_id);
 
@@ -113,7 +113,12 @@ impl<L: Language + egg::FromOp, N: Analysis<L> + Clone + std::default::Default> 
         self.action_history.clone()
     }
 
-    pub fn restore(&mut self, checkpoint_data: Vec<usize>) {}
+    pub fn restore(&mut self, checkpoint_data: Vec<usize>) {
+        self.reset();
+        for action in checkpoint_data.into_iter() {
+            self.step(action);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -143,11 +148,32 @@ mod test {
         ]
     }
 
-    const NODE_LIMIT: usize = 10000;
-    const TIME_LIMIT: usize = 10;
-
     #[test]
     fn test_add_expr_all_return_the_all_id() {
-        // TODO
+        let expr = "(+ 0 (* 1 foo))".parse().unwrap();
+        let mut egraph = EGraph::default();
+        let id = egraph.add_expr(&expr);
+        egraph.rebuild();
+        let new_id = egraph.add_expr(&expr);
+        egraph.rebuild();
+        assert_eq!(id, new_id);
+        println!("ID {:?} - {:?}", id, new_id);
+
+        for _ in 0..5 {
+            let mut runner = Runner::default()
+                .with_egraph(egraph)
+                .with_iter_limit(1)
+                .with_node_limit(10000)
+                .with_time_limit(Duration::from_secs(10))
+                .with_scheduler(SimpleScheduler)
+                .run(&make_rules());
+
+            runner.egraph.rebuild();
+            let new_id = runner.egraph.add_expr(&expr);
+            assert_ne!(id, new_id); // XXX add_expr gives different roots?
+            println!("ID {:?} - {:?}", id, new_id);
+
+            egraph = runner.egraph;
+        }
     }
 }

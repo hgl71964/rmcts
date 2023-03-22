@@ -60,7 +60,7 @@ pub fn worker_loop<
                     // expand one step
                     env.restore(exp_task.checkpoint_data);
                     let expand_action = exp_task.shallow_copy_node.select_expansion_action();
-                    let (next_state, reward, done, info) = env.step(expand_action);
+                    let (next_state, reward, done, _info) = env.step(expand_action);
                     let new_checkpoint_data: Option<Vec<usize>>;
                     if done {
                         new_checkpoint_data = None;
@@ -92,13 +92,13 @@ pub fn worker_loop<
                     assert!(sim_task.action_applied);
 
                     let mut cnt = 0;
-                    let mut state;
+                    let mut _state;
                     let mut reward;
                     let mut done = false; // NOTE if already done, then this simulation will not be scheduled
                     let mut accu_reward = 0.0;
                     let mut accu_gamma = 1.0;
-                    let mut info;
-                    // start_state_value = self.get_value(state) // TODO
+                    let mut _info;
+                    // start_state_value = self.get_value(_state) // TODO
                     let start_state_value = 0.0; // to tune?
                     let factor = 1.0; //  to tune?
                     let mut rng = rand::thread_rng();
@@ -108,14 +108,14 @@ pub fn worker_loop<
                         // random policy rollouts
                         let action_n = env.get_action_space();
                         let action = rng.gen_range(0..action_n);
-                        (state, reward, done, info) = env.step(action);
+                        (_state, reward, done, _info) = env.step(action);
 
                         // timeLimited truncate
                         if cnt == max_sim_step && !done {
                             done = true;
                             // get the final reward TODO
                             // reward = env.reward_func(
-                            // 	done, info, self.wrapped_env.egraph, self.wrapped_env.expr,
+                            // 	done, _info, self.wrapped_env.egraph, self.wrapped_env.expr,
                             // 	self.wrapped_env.base_cost)
                             reward = 0.0;
                         }

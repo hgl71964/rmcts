@@ -12,7 +12,7 @@ enum Status {
 }
 
 pub struct PoolManager {
-    #[allow(unused_variables)]
+    #[allow(unused_variables, dead_code)]
     name: &'static str,
     work_num: usize, // TODO determine this automatically
 

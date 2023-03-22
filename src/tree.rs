@@ -128,7 +128,7 @@ impl<
         let mut state = ();
         let mut reward;
         let mut done;
-        let mut info;
+        let mut _info;
         let mut cnt = 0;
         let mut episode_reward = 0.0;
 
@@ -139,7 +139,7 @@ impl<
             let planning_time = planning_time.elapsed().as_secs();
             println!("planning time {}s", planning_time);
 
-            (state, reward, done, info) = env.step(action);
+            (state, reward, done, _info) = env.step(action);
 
             cnt += 1;
             episode_reward += reward;
