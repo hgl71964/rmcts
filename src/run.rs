@@ -14,7 +14,7 @@ pub fn run_mcts<
     let gamma = 1.0;
     let expansion_worker_num = 1;
     let simulation_worker_num = 4;
-    let verbose = false;
+    // let verbose = false;
     // egg
     let node_limit = 10_000;
     let time_limit = 10;

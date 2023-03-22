@@ -52,6 +52,7 @@ pub fn worker_loop<
                     println!("Worker {} Exit!", id);
                     break;
                 }
+
                 Message::Expansion(exp_task, global_saving_idx, task_idx) => {
                     if verbose {
                         println!("Worker {} Expansion!", id);

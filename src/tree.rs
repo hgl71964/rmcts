@@ -157,7 +157,7 @@ impl<
         self.close();
     }
 
-    fn plan(&mut self, state: &(), env: &Env<L, N>) -> usize {
+    fn plan(&mut self, _state: &(), env: &Env<L, N>) -> usize {
         // skip if action space is 1
         let action_n = env.get_action_space();
         if action_n == 1 {
@@ -280,7 +280,7 @@ impl<
                 let reply = self.exp_pool.get_complete_task();
                 if let Reply::DoneExpansion(
                     expand_action,
-                    next_state,
+                    _next_state,
                     reward,
                     done,
                     child_saturated,
@@ -337,8 +337,7 @@ impl<
             // no need expansion
             // reach terminal node
             self.incomplete_update(Rc::clone(&curr_node), sim_idx);
-            // TODO update with 0.0 reward?
-            self.complete_update(Rc::clone(&curr_node), sim_idx, 0.0);
+            self.complete_update(Rc::clone(&curr_node), sim_idx, 0.0); // TODO update with 0.0 reward?
             self.simulation_count += 1;
         }
 
@@ -415,8 +414,6 @@ mod test {
 
     #[test]
     fn test_if_map_take_ownership() {
-        println!("++++++++++++");
-        println!("test_if_map_take_ownership");
         let a = vec![Some(1), None, Some(3)];
         let mut children: Vec<u32> = a.iter().map(|x| if x.is_some() { 1 } else { 0 }).collect();
         for (_i, j) in children.iter_mut().enumerate() {
@@ -425,19 +422,13 @@ mod test {
         for (i, j) in children.iter_mut().enumerate() {
             println!("{} - {}", i, j);
         }
-        println!("test_if_map_take_ownership done");
-        println!("++++++++++++");
     }
 
     #[test]
     fn test_rand() {
-        println!("++++++++++++");
-        println!("test_rand");
         let mut rng = rand::thread_rng();
         for _ in 0..5 {
             println!("rand gen {} ", rng.gen_range(0..10));
         }
-        println!("test_rand done");
-        println!("++++++++++++");
     }
 }
