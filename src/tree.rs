@@ -53,7 +53,7 @@ pub struct Tree<L, N> {
     d2: PhantomData<N>,
 }
 
-impl<L: Language + 'static, N: Analysis<L> + Clone + 'static> Tree<L, N> {
+impl<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static> Tree<L, N> {
     pub fn new(
         budget: u32,
         max_sim_step: u32,

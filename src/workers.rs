@@ -22,7 +22,7 @@ pub enum Reply {
     DoneSimulation(u32, f32),
 }
 
-pub fn worker_loop<L: Language + 'static, N: Analysis<L> + Clone + 'static>(
+pub fn worker_loop<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static>(
     id: usize,
     gamma: f32,
     max_sim_step: u32,
@@ -34,11 +34,10 @@ pub fn worker_loop<L: Language + 'static, N: Analysis<L> + Clone + 'static>(
     mpsc::Sender<Message>,
     mpsc::Receiver<Reply>,
 ) {
-    let mut env = Env::new(expr, rules);
-
     let (tx, rx) = mpsc::channel();
     let (tx2, rx2) = mpsc::channel();
     let handle = thread::spawn(move || {
+        let mut env = Env::new(expr, rules);
         // worker loop
         loop {
             let message = rx.recv().unwrap();

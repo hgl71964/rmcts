@@ -24,7 +24,7 @@ pub struct PoolManager {
 }
 
 impl PoolManager {
-    pub fn new<L: Language + 'static, N: Analysis<L> + Clone + 'static>(
+    pub fn new<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static>(
         name: &'static str,
         work_num: usize,
         gamma: f32,

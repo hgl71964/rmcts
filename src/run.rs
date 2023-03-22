@@ -1,7 +1,7 @@
 use crate::tree;
 use egg::{Analysis, Language, Rewrite};
 
-pub fn run_mcts<L: Language + 'static, N: Analysis<L> + Clone + 'static>(
+pub fn run_mcts<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static>(
     expr: &'static str,
     rules: Vec<Rewrite<L, N>>,
 ) {
