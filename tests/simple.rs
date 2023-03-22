@@ -27,15 +27,22 @@ fn simplify(s: &str) -> String {
 
     // simplify the expression using a Runner, which creates an e-graph with
     // the given expression and runs the given rules over it
-    let runner = Runner::default().with_expr(&expr).run(&make_rules());
-
-    // the Runner knows which e-class the expression given with `with_expr` is in
+    let runner = Runner::default().with_expr(&expr);
     let root = runner.roots[0];
 
-    // use an Extractor to pick the best element of the root eclass
+    // base cost
+    let extractor = Extractor::new(&runner.egraph, AstSize);
+    let (base_cost, _base) = extractor.find_best(root);
+
+    // best
+    let runner = runner.run(&make_rules());
     let extractor = Extractor::new(&runner.egraph, AstSize);
     let (best_cost, best) = extractor.find_best(root);
-    println!("Simplified {} to {} with cost {}", expr, best, best_cost);
+
+    println!(
+        "Simplified {} to {} with base_cost {} -> cost {}",
+        expr, best, base_cost, best_cost
+    );
     best.to_string()
 }
 

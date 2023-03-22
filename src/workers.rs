@@ -3,7 +3,6 @@ use crate::tree::{ExpTask, SimTask};
 
 use egg::{Analysis, Language, Rewrite};
 use rand::Rng;
-use std::collections::HashMap;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -13,22 +12,27 @@ pub enum Message {
     #[allow(unused_variables)]
     Nothing,
     Expansion(ExpTask, u32, u32),
-    Simulation(SimTask, Vec<u32>, u32),
+    Simulation(SimTask, Vec<usize>, u32),
 }
 
 pub enum Reply {
     OK,
-    DoneExpansion(usize, u32, f32, bool, bool, Option<Vec<u32>>, u32, u32),
+    DoneExpansion(usize, (), f32, bool, bool, Option<Vec<usize>>, u32, u32),
     DoneSimulation(u32, f32),
 }
 
-pub fn worker_loop<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static>(
+pub fn worker_loop<
+    L: Language + 'static + egg::FromOp,
+    N: Analysis<L> + Clone + 'static + std::default::Default,
+>(
     id: usize,
     gamma: f32,
     max_sim_step: u32,
     verbose: bool,
     expr: &'static str,
     rules: Vec<Rewrite<L, N>>,
+    node_limit: usize,
+    time_limit: usize,
 ) -> (
     thread::JoinHandle<()>,
     mpsc::Sender<Message>,
@@ -37,7 +41,9 @@ pub fn worker_loop<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone +
     let (tx, rx) = mpsc::channel();
     let (tx2, rx2) = mpsc::channel();
     let handle = thread::spawn(move || {
-        let mut env = Env::new(expr, rules);
+        // make env
+        let mut env = Env::new(expr, rules, node_limit, time_limit);
+        env.reset();
         // worker loop
         loop {
             let message = rx.recv().unwrap();
@@ -54,7 +60,7 @@ pub fn worker_loop<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone +
                     env.restore(exp_task.checkpoint_data);
                     let expand_action = exp_task.shallow_copy_node.select_expansion_action();
                     let (next_state, reward, done, info) = env.step(expand_action);
-                    let new_checkpoint_data: Option<Vec<u32>>;
+                    let new_checkpoint_data: Option<Vec<usize>>;
                     if done {
                         new_checkpoint_data = None;
                     } else {
@@ -85,12 +91,12 @@ pub fn worker_loop<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone +
                     assert!(sim_task.action_applied);
 
                     let mut cnt = 0;
-                    let mut state = 0;
-                    let mut reward = 0.0;
+                    let mut state;
+                    let mut reward;
                     let mut done = false; // NOTE if already done, then this simulation will not be scheduled
                     let mut accu_reward = 0.0;
                     let mut accu_gamma = 1.0;
-                    let mut info = HashMap::new();
+                    let mut info;
                     // start_state_value = self.get_value(state) // TODO
                     let start_state_value = 0.0; // to tune?
                     let factor = 1.0; //  to tune?

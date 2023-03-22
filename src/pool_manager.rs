@@ -24,7 +24,10 @@ pub struct PoolManager {
 }
 
 impl PoolManager {
-    pub fn new<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static>(
+    pub fn new<
+        L: Language + 'static + egg::FromOp,
+        N: Analysis<L> + Clone + 'static + std::default::Default,
+    >(
         name: &'static str,
         work_num: usize,
         gamma: f32,
@@ -32,13 +35,24 @@ impl PoolManager {
         verbose: bool,
         expr: &'static str,
         rules: Vec<Rewrite<L, N>>,
+        node_limit: usize,
+        time_limit: usize,
     ) -> Self {
         // build workers
         let mut workers = Vec::new();
         let mut txs = Vec::new();
         let mut rxs = Vec::new();
         for i in 0..work_num {
-            let (w, tx, rx) = worker_loop(i, gamma, max_sim_step, verbose, expr, rules.clone());
+            let (w, tx, rx) = worker_loop(
+                i,
+                gamma,
+                max_sim_step,
+                verbose,
+                expr,
+                rules.clone(),
+                node_limit,
+                time_limit,
+            );
             workers.push(w);
             txs.push(tx);
             rxs.push(rx);
@@ -73,7 +87,7 @@ impl PoolManager {
     pub fn assign_simulation_task(
         &mut self,
         sim_task: SimTask,
-        sim_checkpoint_data: Vec<u32>,
+        sim_checkpoint_data: Vec<usize>,
         task_idx: u32,
     ) {
         let id = self.find_idle_worker();
@@ -187,9 +201,22 @@ mod test {
         ]
     }
 
+    const NODE_LIMIT: usize = 10000;
+    const TIME_LIMIT: usize = 10;
+
     #[test]
     fn test_build_and_close() {
-        let mut pool = PoolManager::new("test", 1, 1.0, 1, true, "(* 0 42)", make_rules());
+        let mut pool = PoolManager::new(
+            "test",
+            1,
+            1.0,
+            1,
+            true,
+            "(* 0 42)",
+            make_rules(),
+            NODE_LIMIT,
+            TIME_LIMIT,
+        );
         assert_eq!(pool.has_idle_server(), true);
         pool.assign_nothing_task();
         println!("occupancy: {}", pool.occupancy());
@@ -208,7 +235,17 @@ mod test {
     #[test]
     fn test_poll_channel() {
         let worker_num = 5;
-        let mut pool = PoolManager::new("test", worker_num, 1.0, 1, true, "(* 0 42)", make_rules());
+        let mut pool = PoolManager::new(
+            "test",
+            worker_num,
+            1.0,
+            1,
+            true,
+            "(* 0 42)",
+            make_rules(),
+            NODE_LIMIT,
+            TIME_LIMIT,
+        );
         pool.assign_nothing_task();
         pool.assign_nothing_task();
         pool.assign_nothing_task();

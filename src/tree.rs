@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 // use log::info;
 
 pub struct ExpTask {
-    pub checkpoint_data: Vec<u32>,
+    pub checkpoint_data: Vec<usize>,
     pub shallow_copy_node: NodeStub,
 }
 
@@ -51,17 +51,29 @@ pub struct Tree<L, N> {
 
     d1: PhantomData<L>,
     d2: PhantomData<N>,
+
+    // egg
+    node_limit: usize,
+    time_limit: usize,
 }
 
-impl<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static> Tree<L, N> {
+impl<
+        L: Language + 'static + egg::FromOp,
+        N: Analysis<L> + Clone + 'static + std::default::Default,
+    > Tree<L, N>
+{
     pub fn new(
+        // mcts
         budget: u32,
         max_sim_step: u32,
         gamma: f32,
         expansion_worker_num: usize,
         simulation_worker_num: usize,
+        // egg
         expr: &'static str,
         rules: Vec<Rewrite<L, N>>,
+        node_limit: usize,
+        time_limit: usize,
     ) -> Self {
         Tree {
             budget: budget,
@@ -75,6 +87,8 @@ impl<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static> Tree
                 false,
                 expr,
                 rules.clone(),
+                node_limit,
+                time_limit,
             ),
             sim_pool: pool_manager::PoolManager::new(
                 "simulation",
@@ -84,6 +98,8 @@ impl<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static> Tree
                 false,
                 expr,
                 rules.clone(),
+                node_limit,
+                time_limit,
             ),
             checkpoint_data_manager: checkpoint_manager::CheckpointerManager::new(),
 
@@ -98,18 +114,21 @@ impl<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static> Tree
             pending_simulation_tasks: VecDeque::new(),
             d1: PhantomData,
             d2: PhantomData,
+            node_limit: node_limit,
+            time_limit: time_limit,
         }
     }
 
     pub fn run_loop(&mut self, expr: &'static str, rules: Vec<Rewrite<L, N>>) {
         // env
-        let mut env = Env::new(expr, rules);
+        let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
+        env.reset();
 
         // loop var
-        let mut state = 0;
-        let mut reward = 0.0;
-        let mut done = false;
-        let mut info = HashMap::<u32, u32>::new();
+        let mut state = ();
+        let mut reward;
+        let mut done;
+        let mut info;
         let mut cnt = 0;
         let mut episode_reward = 0.0;
 
@@ -138,7 +157,7 @@ impl<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static> Tree
         self.close();
     }
 
-    fn plan(&mut self, state: &u32, env: &Env<L, N>) -> usize {
+    fn plan(&mut self, state: &(), env: &Env<L, N>) -> usize {
         // skip if action space is 1
         let action_n = env.get_action_space();
         if action_n == 1 {
@@ -189,7 +208,7 @@ impl<L: Language + 'static + egg::FromOp, N: Analysis<L> + Clone + 'static> Tree
         #[allow(unused_variables)]
         let mut curr_depth = 1;
         let mut rng = rand::thread_rng();
-        let mut need_expansion: bool;
+        let need_expansion;
 
         loop {
             let rand = rng.gen_range(0.0..1.0);
