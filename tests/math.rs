@@ -1,6 +1,10 @@
 use egg::{rewrite as rw, *};
 use ordered_float::NotNan;
 
+use rand::prelude::*;
+use rand_chacha::ChaCha8Rng;
+use std::collections::HashMap;
+
 pub type EGraph = egg::EGraph<Math, ConstantFold>;
 pub type Rewrite = egg::Rewrite<Math, ConstantFold>;
 
@@ -210,6 +214,132 @@ pub fn rules() -> Vec<Rewrite> { vec![
         "(- (* ?a (i ?b ?x)) (i (* (d ?x ?a) (i ?b ?x)) ?x))"),
 ]}
 
+#[test]
+fn math_build_lang_by_hand() {
+    let mut expr = RecExpr::default();
+
+    let leaf1 = Math::Symbol("a".into());
+    let leaf2 = Math::Constant(NotNan::new(1.0).unwrap());
+    let id1 = expr.add(leaf1);
+    let id2 = expr.add(leaf2);
+
+    let node = Math::from_op("*", vec![id1, id2]).unwrap();
+    expr.add(node);
+    println!("is-dag {}", expr.is_dag());
+
+    // run
+    let runner = Runner::default()
+        .with_iter_limit(20)
+        .with_expr(&expr)
+        .run(&rules());
+    let root = runner.roots[0];
+    let extractor = Extractor::new(&runner.egraph, AstSize);
+    let (best_cost, best) = extractor.find_best(root);
+    println!(
+        "Simplified {} to {} with best cost {}",
+        expr, best, best_cost
+    );
+}
+
+#[test]
+fn math_rand_seed() {
+    let seed = 0;
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+    let rand = rng.gen_range(0..100);
+
+    for _ in 0..100 {
+        let seed = 0;
+        let mut rng = ChaCha8Rng::seed_from_u64(seed);
+        let sample = rng.gen_range(0..100);
+        assert_eq!(rand, sample);
+    }
+}
+
+fn build_rand_expr(seed: u64, depth: u32) -> RecExpr<Math> {
+    const OPS: [&str; 11] = [
+        "d", "i", "+", "-", "*", "/", "pow", "ln", "sqrt", "sin", "cos",
+    ];
+    const SYM: &str = "a";
+    const NUM: [f64; 3] = [0.0, 1.0, 2.0];
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+    let op2children = HashMap::from([
+        ("d", 2),
+        ("i", 2),
+        ("+", 2),
+        ("-", 2),
+        ("*", 2),
+        ("/", 2),
+        ("pow", 2),
+        ("ln", 1),
+        ("sqrt", 1),
+        ("sin", 1),
+        ("cos", 1),
+    ]);
+    let mut expr = RecExpr::default();
+    dfs(depth, &mut expr, &OPS, &SYM, &NUM, &mut rng, &op2children);
+    expr
+}
+
+fn dfs(
+    depth: u32,
+    expr: &mut RecExpr<Math>,
+    ops: &[&str],
+    sym: &str,
+    num: &[f64],
+    rng: &mut ChaCha8Rng,
+    op2children: &HashMap<&str, u32>,
+) -> egg::Id {
+    if depth == 0 {
+        // term
+        let leaf;
+        let rand = rng.gen_range(0..4);
+        if rand < 3 {
+            leaf = Math::Constant(NotNan::new(num[rand]).unwrap());
+        } else {
+            leaf = Math::Symbol(sym.into());
+        }
+        let id = expr.add(leaf);
+        return id;
+    } else {
+        // op
+        let rand = rng.gen_range(0..ops.len());
+        let op = ops[rand];
+        let n_child = op2children.get(&op).unwrap();
+        let mut ids = vec![];
+        for _ in 0..*n_child {
+            let id = dfs(depth - 1, expr, ops, sym, num, rng, op2children);
+            ids.push(id);
+        }
+
+        let node = Math::from_op(op, ids).unwrap();
+        let id = expr.add(node);
+        return id;
+    }
+}
+
+#[test]
+fn math_egg_with_report() {
+    // build
+    let depth = 7;
+    let seed = 1;
+    let expr = build_rand_expr(seed, depth);
+
+    // run
+    let runner = Runner::default().with_iter_limit(100).with_expr(&expr);
+    let root = runner.roots[0];
+    // base cost
+    let extractor = Extractor::new(&runner.egraph, AstSize);
+    let (base_cost, _base) = extractor.find_best(root);
+    // best
+    let runner = runner.run(&rules());
+    let extractor = Extractor::new(&runner.egraph, AstSize);
+    let (best_cost, best) = extractor.find_best(root);
+    println!(
+        "Simplified {} to {} with base_cost {} -> cost {}",
+        expr, best, base_cost, best_cost
+    );
+    runner.print_report();
+}
 
 #[test]
 #[ignore] // ignore unless specify to run
@@ -296,4 +426,3 @@ fn math_ematching_bench() {
 
     egg::test::bench_egraph("math", rules(), exprs, extra_patterns);
 }
-

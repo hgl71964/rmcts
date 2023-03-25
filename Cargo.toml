@@ -16,3 +16,4 @@ rand = { version = "0.8.5"}
 fxhash = "0.2.1"
 ordered-float = "3.0.0"
 env_logger = { version = "0.9.0", default-features = false }
+rand_chacha = "0.3.1"

@@ -208,6 +208,7 @@ dependencies = [
  "fxhash",
  "ordered-float",
  "rand",
+ "rand_chacha",
 ]
 
 [[package]]

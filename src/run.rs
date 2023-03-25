@@ -12,7 +12,6 @@ pub struct MCTSArgs {
     pub time_limit: usize,
 }
 
-
 pub fn run_mcts<
     L: Language + 'static + egg::FromOp,
     N: Analysis<L> + Clone + 'static + std::default::Default,
