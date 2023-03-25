@@ -16,25 +16,28 @@ pub struct Env<L: Language, N: Analysis<L>> {
     node_limit: usize,
     time_limit: std::time::Duration,
 
-    base_cost: usize,
+    pub base_cost: usize,
     cnt: u32,
     sat_counter: usize,
 }
 
-impl<L: Language + egg::FromOp, N: Analysis<L> + Clone + std::default::Default> Env<L, N> {
+impl<
+        L: Language + egg::FromOp + std::marker::Send,
+        N: Analysis<L> + Clone + std::default::Default,
+    > Env<L, N>
+{
     pub fn new(
-        expr: &'static str,
+        expr: RecExpr<L>,
         rules: Vec<Rewrite<L, N>>,
         node_limit: usize,
         time_limit: usize,
     ) -> Self {
         // get base
-        let e = expr.clone().parse().unwrap();
-        let runner: Runner<L, N> = Runner::default().with_expr(&e);
+        let runner: Runner<L, N> = Runner::default().with_expr(&expr);
         let (base_cost, _) = Extractor::new(&runner.egraph, AstSize).find_best(runner.roots[0]);
         Env {
             action_history: Vec::new(),
-            expr: e,
+            expr: expr,
             egraph: EGraph::default(),
             root_id: Id::default(),
             num_rules: rules.len(),

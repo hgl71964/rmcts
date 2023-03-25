@@ -27,5 +27,5 @@ fn make_rules() -> Vec<Rewrite<SimpleLanguage, ()>> {
 }
 
 fn main() {
-    run::run_mcts("(* 0 42)", make_rules(), None);
+    run::run_mcts("(* 0 42)".parse().unwrap(), make_rules(), None);
 }

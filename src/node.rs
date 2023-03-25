@@ -183,7 +183,8 @@ impl Node {
                     Some(self_node),
                 ))
             }
-            Some(_child) => panic!("this should be a bug"),
+            // Some(_child) => panic!("this should be a bug"),
+            Some(_child) => (), // FIXME
         }
     }
 

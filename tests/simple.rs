@@ -56,5 +56,5 @@ fn simple_egg_test() {
 fn simple_mcts_geb_test() {
     let expr = "(* 0 42)";
     let rws = make_rules();
-    run::run_mcts(expr, rws, None);
+    run::run_mcts(expr.parse().unwrap(), rws, None);
 }

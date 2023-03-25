@@ -1,7 +1,7 @@
 use crate::tree::{ExpTask, SimTask};
 use crate::workers::{worker_loop, Message, Reply};
 
-use egg::{Analysis, Language, Rewrite};
+use egg::{Analysis, Language, RecExpr, Rewrite};
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
@@ -25,7 +25,7 @@ pub struct PoolManager {
 
 impl PoolManager {
     pub fn new<
-        L: Language + 'static + egg::FromOp,
+        L: Language + 'static + egg::FromOp + std::marker::Send,
         N: Analysis<L> + Clone + 'static + std::default::Default,
     >(
         name: &'static str,
@@ -33,7 +33,7 @@ impl PoolManager {
         gamma: f32,
         max_sim_step: u32,
         verbose: bool,
-        expr: &'static str,
+        expr: RecExpr<L>,
         rules: Vec<Rewrite<L, N>>,
         node_limit: usize,
         time_limit: usize,
@@ -48,7 +48,7 @@ impl PoolManager {
                 gamma,
                 max_sim_step,
                 verbose,
-                expr,
+                expr.clone(),
                 rules.clone(),
                 node_limit,
                 time_limit,
@@ -212,7 +212,7 @@ mod test {
             1.0,
             1,
             true,
-            "(* 0 42)",
+            "(* 0 42)".parse().unwrap(),
             make_rules(),
             NODE_LIMIT,
             TIME_LIMIT,
@@ -241,7 +241,7 @@ mod test {
             1.0,
             1,
             true,
-            "(* 0 42)",
+            "(* 0 42)".parse().unwrap(),
             make_rules(),
             NODE_LIMIT,
             TIME_LIMIT,

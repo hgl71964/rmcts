@@ -4,7 +4,7 @@ use crate::node::{Node, NodeStub};
 use crate::pool_manager;
 use crate::workers::Reply;
 
-use egg::{Analysis, Language, Rewrite};
+use egg::{Analysis, Language, RecExpr, Rewrite};
 use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -58,7 +58,7 @@ pub struct Tree<L, N> {
 }
 
 impl<
-        L: Language + 'static + egg::FromOp,
+        L: Language + 'static + egg::FromOp + std::marker::Send,
         N: Analysis<L> + Clone + 'static + std::default::Default,
     > Tree<L, N>
 {
@@ -70,7 +70,7 @@ impl<
         expansion_worker_num: usize,
         simulation_worker_num: usize,
         // egg
-        expr: &'static str,
+        expr: RecExpr<L>,
         rules: Vec<Rewrite<L, N>>,
         node_limit: usize,
         time_limit: usize,
@@ -85,7 +85,7 @@ impl<
                 gamma,
                 max_sim_step,
                 false,
-                expr,
+                expr.clone(),
                 rules.clone(),
                 node_limit,
                 time_limit,
@@ -96,7 +96,7 @@ impl<
                 gamma,
                 max_sim_step,
                 false,
-                expr,
+                expr.clone(),
                 rules.clone(),
                 node_limit,
                 time_limit,
@@ -119,7 +119,7 @@ impl<
         }
     }
 
-    pub fn run_loop(&mut self, expr: &'static str, rules: Vec<Rewrite<L, N>>) {
+    pub fn run_loop(&mut self, expr: RecExpr<L>, rules: Vec<Rewrite<L, N>>) {
         // env
         let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
         env.reset();
@@ -153,6 +153,10 @@ impl<
                 break;
             }
         }
+        println!(
+            "Done:: base_cost {} -> cost {}",
+            env.base_cost, episode_reward
+        );
 
         self.close();
     }

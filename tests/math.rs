@@ -50,7 +50,7 @@ impl egg::CostFunction<Math> for MathCostFn {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ConstantFold;
 impl Analysis<Math> for ConstantFold {
     type Data = Option<(Constant, PatternAst<Math>)>;
@@ -328,7 +328,6 @@ fn math_egg() {
     run_egg(false, &expr);
 
     fn run_egg(backoff: bool, expr: &RecExpr<Math>) {
-        // run
         let runner = if backoff {
             Runner::default().with_iter_limit(100).with_expr(expr)
         } else {
@@ -364,9 +363,9 @@ fn math_mcts_geb() {
         max_sim_step: 5,
         gamma: 0.99,
         expansion_worker_num: 1,
-        simulation_worker_num: 16,
+        simulation_worker_num: 2,
         node_limit: 10_000,
         time_limit: 5,
     };
-    // run_mcts(expr, rules(), args);
+    run_mcts(expr, rules(), Some(args));
 }

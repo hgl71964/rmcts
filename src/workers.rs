@@ -1,7 +1,7 @@
 use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
 
-use egg::{Analysis, Language, Rewrite};
+use egg::{Analysis, Language, RecExpr, Rewrite};
 use rand::Rng;
 use std::sync::mpsc;
 use std::thread;
@@ -22,14 +22,14 @@ pub enum Reply {
 }
 
 pub fn worker_loop<
-    L: Language + 'static + egg::FromOp,
+    L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default,
 >(
     id: usize,
     gamma: f32,
     max_sim_step: u32,
     verbose: bool,
-    expr: &'static str,
+    expr: RecExpr<L>,
     rules: Vec<Rewrite<L, N>>,
     node_limit: usize,
     time_limit: usize,
