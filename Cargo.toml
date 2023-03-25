@@ -6,9 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# egg = { version = "0.9.3", features = ["lp"] }
-egg = { version = "0.9.3"}
+# egg = { version = "0.9.3", features = [ "lp", "serde-1"] }
+egg = { version = "0.9.3", features = ["serde-1"] }
 rand = { version = "0.8.5"}
+serde = { version = "1.0", features = ["derive"] }
 
 
 # test only deps

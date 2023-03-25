@@ -1,5 +1,6 @@
 mod checkpoint_manager;
 mod env;
+mod eg_env;
 mod node;
 mod pool_manager;
 mod run;
