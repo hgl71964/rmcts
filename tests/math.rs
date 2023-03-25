@@ -1,5 +1,6 @@
 use egg::{rewrite as rw, *};
 use ordered_float::NotNan;
+use rmcts::run::{run_mcts, MCTSArgs};
 
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
@@ -318,111 +319,54 @@ fn dfs(
 }
 
 #[test]
-fn math_egg_with_report() {
+fn math_egg() {
     // build
     let depth = 7;
     let seed = 1;
     let expr = build_rand_expr(seed, depth);
+    run_egg(true, &expr);
+    run_egg(false, &expr);
 
-    // run
-    let runner = Runner::default().with_iter_limit(100).with_expr(&expr);
-    let root = runner.roots[0];
-    // base cost
-    let extractor = Extractor::new(&runner.egraph, AstSize);
-    let (base_cost, _base) = extractor.find_best(root);
-    // best
-    let runner = runner.run(&rules());
-    let extractor = Extractor::new(&runner.egraph, AstSize);
-    let (best_cost, best) = extractor.find_best(root);
-    println!(
-        "Simplified {} to {} with base_cost {} -> cost {}",
-        expr, best, base_cost, best_cost
-    );
-    runner.print_report();
+    fn run_egg(backoff: bool, expr: &RecExpr<Math>) {
+        // run
+        let runner = if backoff {
+            Runner::default().with_iter_limit(100).with_expr(expr)
+        } else {
+            Runner::default()
+                .with_iter_limit(100)
+                .with_scheduler(egg::SimpleScheduler)
+                .with_expr(expr)
+        };
+        let root = runner.roots[0];
+        // base cost
+        let extractor = Extractor::new(&runner.egraph, AstSize);
+        let (base_cost, _base) = extractor.find_best(root);
+        // best
+        let runner = runner.run(&rules());
+        let extractor = Extractor::new(&runner.egraph, AstSize);
+        let (best_cost, best) = extractor.find_best(root);
+        println!(
+            "Simplified {} to {} with base_cost {} -> cost {}",
+            expr, best, base_cost, best_cost
+        );
+        runner.print_report();
+    }
 }
 
 #[test]
-#[ignore] // ignore unless specify to run
-fn assoc_mul_saturates() {
-    let expr: RecExpr<Math> = "(* x 1)".parse().unwrap();
-
-    let runner: Runner<Math, ConstantFold> = Runner::default()
-        .with_iter_limit(3)
-        .with_expr(&expr)
-        .run(&rules());
-
-    assert!(matches!(runner.stop_reason, Some(StopReason::Saturated)));
-}
-
-#[cfg(feature = "lp")]
-#[test]
-fn math_lp_extract() {
-    let expr: RecExpr<Math> = "(pow (+ x (+ x x)) (+ x x))".parse().unwrap();
-
-    let runner: Runner<Math, ConstantFold> = Runner::default()
-        .with_iter_limit(3)
-        .with_expr(&expr)
-        .run(&rules());
-    let root = runner.roots[0];
-
-    let best = Extractor::new(&runner.egraph, AstSize).find_best(root).1;
-    let lp_best = LpExtractor::new(&runner.egraph, AstSize).solve(root);
-
-    println!("input   [{}] {}", expr.as_ref().len(), expr);
-    println!("normal  [{}] {}", best.as_ref().len(), best);
-    println!("ilp cse [{}] {}", lp_best.as_ref().len(), lp_best);
-
-    assert_ne!(best, lp_best);
-    assert_eq!(lp_best.as_ref().len(), 4);
-}
-
-#[test]
-#[ignore] // ignore unless specify to run
-fn math_ematching_bench() {
-    let exprs = &[
-        "(i (ln x) x)",
-        "(i (+ x (cos x)) x)",
-        "(i (* (cos x) x) x)",
-        "(d x (+ 1 (* 2 x)))",
-        "(d x (- (pow x 3) (* 7 (pow x 2))))",
-        "(+ (* y (+ x y)) (- (+ x 2) (+ x x)))",
-        "(/ 1 (- (/ (+ 1 (sqrt five)) 2) (/ (- 1 (sqrt five)) 2)))",
-    ];
-
-    let extra_patterns = &[
-        "(+ ?a (+ ?b ?c))",
-        "(+ (+ ?a ?b) ?c)",
-        "(* ?a (* ?b ?c))",
-        "(* (* ?a ?b) ?c)",
-        "(+ ?a (* -1 ?b))",
-        "(* ?a (pow ?b -1))",
-        "(* ?a (+ ?b ?c))",
-        "(pow ?a (+ ?b ?c))",
-        "(+ (* ?a ?b) (* ?a ?c))",
-        "(* (pow ?a ?b) (pow ?a ?c))",
-        "(* ?x (/ 1 ?x))",
-        "(d ?x (+ ?a ?b))",
-        "(+ (d ?x ?a) (d ?x ?b))",
-        "(d ?x (* ?a ?b))",
-        "(+ (* ?a (d ?x ?b)) (* ?b (d ?x ?a)))",
-        "(d ?x (sin ?x))",
-        "(d ?x (cos ?x))",
-        "(* -1 (sin ?x))",
-        "(* -1 (cos ?x))",
-        "(i (cos ?x) ?x)",
-        "(i (sin ?x) ?x)",
-        "(d ?x (ln ?x))",
-        "(d ?x (pow ?f ?g))",
-        "(* (pow ?f ?g) (+ (* (d ?x ?f) (/ ?g ?f)) (* (d ?x ?g) (ln ?f))))",
-        "(i (pow ?x ?c) ?x)",
-        "(/ (pow ?x (+ ?c 1)) (+ ?c 1))",
-        "(i (+ ?f ?g) ?x)",
-        "(i (- ?f ?g) ?x)",
-        "(+ (i ?f ?x) (i ?g ?x))",
-        "(- (i ?f ?x) (i ?g ?x))",
-        "(i (* ?a ?b) ?x)",
-        "(- (* ?a (i ?b ?x)) (i (* (d ?x ?a) (i ?b ?x)) ?x))",
-    ];
-
-    egg::test::bench_egraph("math", rules(), exprs, extra_patterns);
+fn math_mcts_geb() {
+    // build
+    let depth = 7;
+    let seed = 1;
+    let expr = build_rand_expr(seed, depth);
+    let args = MCTSArgs {
+        budget: 128,
+        max_sim_step: 5,
+        gamma: 0.99,
+        expansion_worker_num: 1,
+        simulation_worker_num: 16,
+        node_limit: 10_000,
+        time_limit: 5,
+    };
+    // run_mcts(expr, rules(), args);
 }
