@@ -126,13 +126,13 @@ impl<
     }
 
     // immediately extract and get reward
-    pub fn get_reward(&self) -> f32 {
-        let extractor = Extractor::new(&self.egraph, AstSize);
-        let (best_cost, _) = extractor.find_best(self.root_id);
-        let reward = std::cmp::max(self.last_cost - best_cost, 0); // TODO allow callback cost func
+    // pub fn get_reward(&self) -> f32 {
+    //     let extractor = Extractor::new(&self.egraph, AstSize);
+    //     let (best_cost, _) = extractor.find_best(self.root_id);
+    //     let reward = std::cmp::max(self.last_cost - best_cost, 0); // TODO allow callback cost func
 
-        reward as f32
-    }
+    //     reward as f32
+    // }
 
     pub fn get_action_space(&self) -> usize {
         self.num_rules

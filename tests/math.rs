@@ -354,6 +354,7 @@ fn math_egg() {
 
 #[test]
 fn math_mcts_geb() {
+    println!("num rules {}", rules().len());
     // build
     let depth = 7;
     let seed = 1;
@@ -363,7 +364,7 @@ fn math_mcts_geb() {
         max_sim_step: 5,
         gamma: 0.99,
         expansion_worker_num: 1,
-        simulation_worker_num: 2,
+        simulation_worker_num: 16,
         node_limit: 10_000,
         time_limit: 5,
     };

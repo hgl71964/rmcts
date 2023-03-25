@@ -155,8 +155,7 @@ impl<
         }
         println!(
             "Done:: base_cost {} -> cost {}",
-            env.base_cost,
-            env.get_reward(),
+            env.base_cost, info.best_cost,
         );
 
         self.close();
