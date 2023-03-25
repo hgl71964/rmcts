@@ -89,23 +89,11 @@ impl Node {
     // }
 
     pub fn shallow_clone(&self) -> NodeStub {
-        // NOTE: the stub only needs to know whether a child exists or not
-        let children: Vec<u32> = self
-            .children
-            .iter()
-            .map(|x| if x.is_some() { 1 } else { 0 })
-            .collect();
         NodeStub {
             action_n: self.action_n,
-            // checkpoint_idx: self.checkpoint_idx,
-            // gamma: self.gamma,
             is_head: self.is_head,
-            children: children,
-
+            // NOTE: only children_visit_count is up-to-date with all selected action!
             children_visit_count: self.children_visit_count.clone(),
-            // children_complete_visit_count: self.children_complete_visit_count.clone(),
-            // visited_node_count: self.visited_node_count,
-            // updated_node_count: self.updated_node_count,
         }
     }
 
@@ -183,8 +171,13 @@ impl Node {
                     Some(self_node),
                 ))
             }
-            // Some(_child) => panic!("this should be a bug"),
-            Some(_child) => (), // TODO
+            Some(child) => panic!(
+                "self {} - action {} - to-add {} - existing child {}",
+                self.checkpoint_idx,
+                expand_action,
+                saving_idx,
+                child.borrow().checkpoint_idx
+            ),
         }
     }
 
@@ -229,12 +222,7 @@ impl Node {
 pub struct NodeStub {
     pub action_n: usize,
     pub is_head: bool,
-
-    pub children: Vec<u32>,
     pub children_visit_count: Vec<u32>,
-    // pub children_complete_visit_count: Vec<u32>,
-    // pub visited_node_count: u32,
-    // pub updated_node_count: u32,
 }
 
 impl NodeStub {
@@ -251,13 +239,13 @@ impl NodeStub {
                 return action;
             }
 
+            if self.children_visit_count[action] == 0 {
+                return action;
+            }
+
             if self.children_visit_count[action] > 0 && cnt < 10 {
                 cnt += 1;
                 continue;
-            }
-
-            if self.children[action] == 0 {
-                return action;
             }
         }
     }

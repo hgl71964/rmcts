@@ -75,6 +75,7 @@ impl<
         node_limit: usize,
         time_limit: usize,
     ) -> Self {
+        assert_eq!(expansion_worker_num, 1); // more than 1 expansion may have problem
         Tree {
             budget: budget,
             gamma: gamma,
