@@ -1,12 +1,13 @@
 use egg::{
-    Analysis, AstSize, EGraph, Extractor, Id, Language, RecExpr, Rewrite, Runner, SimpleScheduler,
-    StopReason,
+    Analysis, AstSize, EGraph, Extractor, Id, Language, RecExpr, Report, Rewrite, Runner,
+    SimpleScheduler, StopReason,
 };
 // use std::collections::HashMap;
 use std::time::Duration;
 
 pub struct Info {
-    pub stop_reason: egg::StopReason,
+    pub report: Report,
+    pub best_cost: usize,
 }
 
 pub struct Env<L: Language, N: Analysis<L>> {
@@ -77,6 +78,7 @@ impl<
             .with_time_limit(self.time_limit)
             .with_scheduler(SimpleScheduler)
             .run(&rule);
+        let report = runner.report();
 
         // reclaim the partial egraph
         self.egraph = runner.egraph;
@@ -86,8 +88,6 @@ impl<
         //     .iter()
         //     .map(|i| i.applied.values().sum::<usize>())
         //     .sum();
-        // let egraph_nodes: usize = runner.egraph.total_size();
-        // let egraph_classes: usize = runner.egraph.number_of_classes();
 
         // run extract
         let extractor = Extractor::new(&self.egraph, AstSize);
@@ -116,10 +116,11 @@ impl<
             _ => self.sat_counter = 0,
         }
         let reward = std::cmp::max(self.last_cost - best_cost, 0); // TODO allow callback cost func
-        let info = Info {
-            stop_reason: runner.stop_reason.unwrap(),
-        };
         self.last_cost = best_cost;
+        let info = Info {
+            report: report,
+            best_cost: best_cost,
+        };
 
         ((), (reward as f32), done, info)
     }

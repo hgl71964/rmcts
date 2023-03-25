@@ -69,7 +69,7 @@ pub fn worker_loop<
                     }
                     let mut child_saturated = false;
                     if exp_task.shallow_copy_node.is_head {
-                        match info.stop_reason {
+                        match info.report.stop_reason {
                             StopReason::Saturated => child_saturated = true,
                             _ => (),
                         }
@@ -116,7 +116,7 @@ pub fn worker_loop<
                         if cnt == max_sim_step && !done {
                             done = true;
                             // get the final reward
-                            reward = env.get_reward();
+                            // reward = env.get_reward();
                         }
 
                         accu_reward += reward * accu_gamma;

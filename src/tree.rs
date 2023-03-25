@@ -128,7 +128,7 @@ impl<
         let mut state = ();
         let mut reward;
         let mut done;
-        let mut _info;
+        let mut info;
         let mut cnt = 0;
         let mut episode_reward = 0.0;
 
@@ -137,18 +137,18 @@ impl<
             let planning_time = Instant::now();
             let action = self.plan(&state, &env);
             let planning_time = planning_time.elapsed().as_secs();
-            println!("planning time {}s", planning_time);
 
-            (state, reward, done, _info) = env.step(action);
+            (state, reward, done, info) = env.step(action);
 
             cnt += 1;
             episode_reward += reward;
 
             println!(
-                "iter: {} - reward: {} - cumulative_reward: {}",
-                cnt, reward, episode_reward
+                "Iter {}; planning time {}s; reward {}; episode_reward {}; best cost {}",
+                cnt, planning_time, reward, episode_reward, info.best_cost
             );
-
+            println!("{}", info.report);
+            println!("************************");
             if done {
                 break;
             }
