@@ -155,7 +155,8 @@ impl<
         }
         println!(
             "Done:: base_cost {} -> cost {}",
-            env.base_cost, episode_reward
+            env.base_cost,
+            env.get_reward(),
         );
 
         self.close();
@@ -199,7 +200,7 @@ impl<
         );
         thread::sleep(Duration::from_secs(1));
 
-        // TODO: it is a bad idea to termiante a thread, perhaps just timeout a function in worker
+        // it is a bad idea to termiante a thread, perhaps just timeout a function in worker
         // thread, as a way to handle stragger
 
         // final action

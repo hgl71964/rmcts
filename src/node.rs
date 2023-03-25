@@ -170,7 +170,7 @@ impl Node {
     ) {
         if child_saturated {
             assert!(self.is_head);
-            // TODO no supported yet
+            self.children_saturated[expand_action] = true;
         }
 
         match &self.children[expand_action] {
@@ -184,7 +184,7 @@ impl Node {
                 ))
             }
             // Some(_child) => panic!("this should be a bug"),
-            Some(_child) => (), // FIXME
+            Some(_child) => (), // TODO
         }
     }
 

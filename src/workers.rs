@@ -1,7 +1,7 @@
 use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
 
-use egg::{Analysis, Language, RecExpr, Rewrite};
+use egg::{Analysis, Language, RecExpr, Rewrite, StopReason};
 use rand::Rng;
 use std::sync::mpsc;
 use std::thread;
@@ -60,18 +60,20 @@ pub fn worker_loop<
                     // expand one step
                     env.restore(exp_task.checkpoint_data);
                     let expand_action = exp_task.shallow_copy_node.select_expansion_action();
-                    let (next_state, reward, done, _info) = env.step(expand_action);
+                    let (next_state, reward, done, info) = env.step(expand_action);
                     let new_checkpoint_data: Option<Vec<usize>>;
                     if done {
                         new_checkpoint_data = None;
                     } else {
                         new_checkpoint_data = Some(env.checkpoint());
                     }
-
-                    // TODO
-                    let child_saturated = false;
-                    // if exp_task.shallow_copy_node.is_head && info["stop_reason"] == "SATURATED":
-                    //     child_saturated = True
+                    let mut child_saturated = false;
+                    if exp_task.shallow_copy_node.is_head {
+                        match info.stop_reason {
+                            StopReason::Saturated => child_saturated = true,
+                            _ => (),
+                        }
+                    }
 
                     // reply
                     tx2.send(Reply::DoneExpansion(
@@ -113,11 +115,8 @@ pub fn worker_loop<
                         // timeLimited truncate
                         if cnt == max_sim_step && !done {
                             done = true;
-                            // get the final reward TODO
-                            // reward = env.reward_func(
-                            // 	done, _info, self.wrapped_env.egraph, self.wrapped_env.expr,
-                            // 	self.wrapped_env.base_cost)
-                            reward = 0.0;
+                            // get the final reward
+                            reward = env.get_reward();
                         }
 
                         accu_reward += reward * accu_gamma;

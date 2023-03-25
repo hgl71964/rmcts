@@ -2,8 +2,12 @@ use egg::{
     Analysis, AstSize, EGraph, Extractor, Id, Language, RecExpr, Rewrite, Runner, SimpleScheduler,
     StopReason,
 };
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use std::time::Duration;
+
+pub struct Info {
+    pub stop_reason: egg::StopReason,
+}
 
 pub struct Env<L: Language, N: Analysis<L>> {
     action_history: Vec<usize>,
@@ -17,6 +21,7 @@ pub struct Env<L: Language, N: Analysis<L>> {
     time_limit: std::time::Duration,
 
     pub base_cost: usize,
+    pub last_cost: usize,
     cnt: u32,
     sat_counter: usize,
 }
@@ -46,6 +51,7 @@ impl<
             time_limit: Duration::from_secs(time_limit.try_into().unwrap()),
 
             base_cost: base_cost,
+            last_cost: base_cost,
             cnt: 0,
             sat_counter: 0,
         }
@@ -57,9 +63,10 @@ impl<
         self.sat_counter = 0;
         self.egraph = EGraph::default();
         self.root_id = self.egraph.add_expr(&self.expr);
+        self.last_cost = self.base_cost;
     }
 
-    pub fn step(&mut self, action: usize) -> ((), f32, bool, HashMap<u32, u32>) {
+    pub fn step(&mut self, action: usize) -> ((), f32, bool, Info) {
         // run egg
         let egraph = std::mem::take(&mut self.egraph);
         let rule = vec![self.rules[action].clone()];
@@ -70,6 +77,10 @@ impl<
             .with_time_limit(self.time_limit)
             .with_scheduler(SimpleScheduler)
             .run(&rule);
+
+        // reclaim the partial egraph
+        self.egraph = runner.egraph;
+
         // let num_applications: usize = runner
         //     .iterations
         //     .iter()
@@ -79,17 +90,14 @@ impl<
         // let egraph_classes: usize = runner.egraph.number_of_classes();
 
         // run extract
-        // runner.egraph.rebuild(); // invariant
-        let extractor = Extractor::new(&runner.egraph, AstSize);
+        let extractor = Extractor::new(&self.egraph, AstSize);
         let (best_cost, _) = extractor.find_best(self.root_id);
-
-        // reclaim the partial egraph
-        self.egraph = runner.egraph;
 
         // compute transition
         self.cnt += 1;
+        self.action_history.push(action);
         let mut done = false;
-        match runner.stop_reason.unwrap() {
+        match runner.stop_reason.as_ref().unwrap() {
             StopReason::NodeLimit(_) => {
                 done = true;
                 self.sat_counter = 0;
@@ -107,10 +115,22 @@ impl<
             StopReason::IterationLimit(_) => self.sat_counter = 0,
             _ => self.sat_counter = 0,
         }
-        let reward = std::cmp::max(self.base_cost - best_cost, 0); // TODO allow callback cost func
-        self.action_history.push(action);
+        let reward = std::cmp::max(self.last_cost - best_cost, 0); // TODO allow callback cost func
+        let info = Info {
+            stop_reason: runner.stop_reason.unwrap(),
+        };
+        self.last_cost = best_cost;
 
-        ((), (reward as f32), done, HashMap::new())
+        ((), (reward as f32), done, info)
+    }
+
+    // immediately extract and get reward
+    pub fn get_reward(&self) -> f32 {
+        let extractor = Extractor::new(&self.egraph, AstSize);
+        let (best_cost, _) = extractor.find_best(self.root_id);
+        let reward = std::cmp::max(self.last_cost - best_cost, 0); // TODO allow callback cost func
+
+        reward as f32
     }
 
     pub fn get_action_space(&self) -> usize {
