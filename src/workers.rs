@@ -10,12 +10,12 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-pub enum Message {
+pub enum Message<L, N> {
     Exit,
     #[allow(unused_variables)]
     Nothing,
-    Expansion(ExpTask, u32, u32),
-    Simulation(SimTask, u32),
+    Expansion(ExpTask<L, N>, u32, u32),
+    Simulation(SimTask<L, N>, u32),
 }
 
 pub enum Reply {
@@ -26,7 +26,7 @@ pub enum Reply {
 
 pub fn worker_loop<
     L: Language + 'static + egg::FromOp + std::marker::Send,
-    N: Analysis<L> + Clone + 'static + std::default::Default,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
 >(
     id: usize,
     gamma: f32,
@@ -38,7 +38,7 @@ pub fn worker_loop<
     time_limit: usize,
 ) -> (
     thread::JoinHandle<()>,
-    mpsc::Sender<Message>,
+    mpsc::Sender<Message<L, N>>,
     mpsc::Receiver<Reply>,
 ) {
     let (tx, rx) = mpsc::channel();

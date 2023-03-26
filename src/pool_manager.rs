@@ -11,7 +11,7 @@ enum Status {
     Idle,
 }
 
-pub struct PoolManager {
+pub struct PoolManager<L, N> {
     #[allow(unused_variables, dead_code)]
     name: &'static str,
     work_num: usize, // TODO determine this automatically
@@ -19,15 +19,16 @@ pub struct PoolManager {
     // self
     workers: Vec<thread::JoinHandle<()>>,
     worker_status: Vec<Status>,
-    txs: Vec<Sender<Message>>,
+    txs: Vec<Sender<Message<L, N>>>,
     rxs: Vec<Receiver<Reply>>,
 }
 
-impl PoolManager {
-    pub fn new<
+impl<
         L: Language + 'static + egg::FromOp + std::marker::Send,
-        N: Analysis<L> + Clone + 'static + std::default::Default,
-    >(
+        N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    > PoolManager<L, N>
+{
+    pub fn new(
         name: &'static str,
         work_num: usize,
         gamma: f32,
@@ -74,7 +75,7 @@ impl PoolManager {
 
     pub fn assign_expansion_task(
         &mut self,
-        exp_task: ExpTask,
+        exp_task: ExpTask<L, N>,
         global_saving_idx: u32,
         task_idx: u32,
     ) {
@@ -84,7 +85,7 @@ impl PoolManager {
             .unwrap();
     }
 
-    pub fn assign_simulation_task(&mut self, sim_task: SimTask, task_idx: u32) {
+    pub fn assign_simulation_task(&mut self, sim_task: SimTask<L, N>, task_idx: u32) {
         let id = self.find_idle_worker();
         self.txs[id]
             .send(Message::Simulation(sim_task, task_idx))

@@ -14,7 +14,7 @@ pub struct MCTSArgs {
 
 pub fn run_mcts<
     L: Language + 'static + egg::FromOp + std::marker::Send,
-    N: Analysis<L> + Clone + 'static + std::default::Default,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
 >(
     expr: RecExpr<L>,
     rules: Vec<Rewrite<L, N>>,

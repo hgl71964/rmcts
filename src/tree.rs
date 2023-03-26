@@ -18,18 +18,22 @@ use std::thread;
 use std::time::{Duration, Instant};
 // use log::info;
 
-pub struct ExpTask {
+pub struct ExpTask<L, N> {
     pub checkpoint_data: Vec<usize>,
     pub shallow_copy_node: NodeStub,
+    d1: PhantomData<L>,
+    d2: PhantomData<N>,
 }
 
 #[derive(Debug, Clone)]
-pub struct SimTask {
+pub struct SimTask<L, N> {
     pub checkpoint_data: Vec<usize>,
     pub action: usize,
     pub saving_idx: u32,
     pub action_applied: bool,
     pub child_saturated: bool,
+    d1: PhantomData<L>,
+    d2: PhantomData<N>,
 }
 
 pub struct Tree<L, N> {
@@ -38,17 +42,17 @@ pub struct Tree<L, N> {
     gamma: f32,
 
     // data and concurrency
-    exp_pool: pool_manager::PoolManager,
-    sim_pool: pool_manager::PoolManager,
+    exp_pool: pool_manager::PoolManager<L, N>,
+    sim_pool: pool_manager::PoolManager<L, N>,
     ckpts: HashMap<u32, Vec<usize>>,
 
     // for planning
     root_node: Rc<RefCell<Node>>,
     global_saving_idx: u32,
     simulation_count: u32,
-    expansion_tasks: HashMap<u32, ExpTask>,
+    expansion_tasks: HashMap<u32, ExpTask<L, N>>,
     expansion_nodes_copy: HashMap<u32, Rc<RefCell<Node>>>,
-    simulation_tasks: HashMap<u32, SimTask>,
+    simulation_tasks: HashMap<u32, SimTask<L, N>>,
     simulation_nodes_copy: HashMap<u32, Rc<RefCell<Node>>>,
     pending_expansion_tasks: VecDeque<u32>,
     pending_simulation_tasks: VecDeque<u32>,
@@ -63,7 +67,7 @@ pub struct Tree<L, N> {
 
 impl<
         L: Language + 'static + egg::FromOp + std::marker::Send,
-        N: Analysis<L> + Clone + 'static + std::default::Default,
+        N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     > Tree<L, N>
 {
     pub fn new(
@@ -243,6 +247,8 @@ impl<
                     ExpTask {
                         checkpoint_data: checkpoint_data,
                         shallow_copy_node: cloned_curr_node,
+                        d1: PhantomData,
+                        d2: PhantomData,
                     },
                 );
                 self.expansion_nodes_copy
@@ -334,6 +340,8 @@ impl<
                                 saving_idx: saving_idx,
                                 action_applied: true,
                                 child_saturated: child_saturated,
+                                d1: PhantomData,
+                                d2: PhantomData,
                             },
                         );
                         self.simulation_nodes_copy
