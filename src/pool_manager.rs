@@ -84,15 +84,10 @@ impl PoolManager {
             .unwrap();
     }
 
-    pub fn assign_simulation_task(
-        &mut self,
-        sim_task: SimTask,
-        sim_checkpoint_data: Vec<usize>,
-        task_idx: u32,
-    ) {
+    pub fn assign_simulation_task(&mut self, sim_task: SimTask, task_idx: u32) {
         let id = self.find_idle_worker();
         self.txs[id]
-            .send(Message::Simulation(sim_task, sim_checkpoint_data, task_idx))
+            .send(Message::Simulation(sim_task, task_idx))
             .unwrap();
     }
 

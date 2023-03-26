@@ -1,4 +1,7 @@
-use crate::checkpoint_manager;
+// use crate::checkpoint_manager;
+#[allow(unused_imports)]
+use crate::eg_env::EgraphEnv;
+#[allow(unused_imports)]
 use crate::env::Env;
 use crate::node::{Node, NodeStub};
 use crate::pool_manager;
@@ -22,6 +25,7 @@ pub struct ExpTask {
 
 #[derive(Debug, Clone)]
 pub struct SimTask {
+    pub checkpoint_data: Vec<usize>,
     pub action: usize,
     pub saving_idx: u32,
     pub action_applied: bool,
@@ -36,7 +40,7 @@ pub struct Tree<L, N> {
     // data and concurrency
     exp_pool: pool_manager::PoolManager,
     sim_pool: pool_manager::PoolManager,
-    checkpoint_data_manager: checkpoint_manager::CheckpointerManager,
+    ckpts: HashMap<u32, Vec<usize>>,
 
     // for planning
     root_node: Rc<RefCell<Node>>,
@@ -102,7 +106,7 @@ impl<
                 node_limit,
                 time_limit,
             ),
-            checkpoint_data_manager: checkpoint_manager::CheckpointerManager::new(),
+            ckpts: HashMap::new(),
 
             root_node: Node::dummy(),
             global_saving_idx: 0,
@@ -172,7 +176,7 @@ impl<
         // clear
         self.global_saving_idx = 0;
         self.simulation_count = 0;
-        self.checkpoint_data_manager.clear();
+        self.ckpts.clear();
         self.expansion_tasks.clear();
         self.expansion_nodes_copy.clear();
         self.simulation_tasks.clear();
@@ -183,8 +187,7 @@ impl<
         self.sim_pool.wait_until_all_idle();
 
         // build current state
-        self.checkpoint_data_manager
-            .checkpoint_env(self.global_saving_idx, env.checkpoint());
+        self.ckpts.insert(self.global_saving_idx, env.checkpoint());
         self.root_node = Node::new(action_n, self.global_saving_idx, self.gamma, true, None);
         self.global_saving_idx += 1;
 
@@ -228,8 +231,10 @@ impl<
 
                 let cloned_curr_node = curr_node.borrow().shallow_clone();
                 let checkpoint_data = self
-                    .checkpoint_data_manager
-                    .retrieve(curr_node.borrow().checkpoint_idx);
+                    .ckpts
+                    .get(&curr_node.borrow().checkpoint_idx)
+                    .unwrap()
+                    .clone();
                 // println!("{:?}", curr_node.children);
 
                 // Record the task
@@ -319,11 +324,12 @@ impl<
                         // ELSE add_child will be done after simulation!
                         // Add task to pending simulation
                         assert!(new_checkpoint_data.is_some());
-                        self.checkpoint_data_manager
-                            .checkpoint_env(saving_idx, new_checkpoint_data.unwrap());
+                        let new_checkpoint_data = new_checkpoint_data.unwrap();
+                        self.ckpts.insert(saving_idx, new_checkpoint_data.clone());
                         self.simulation_tasks.insert(
                             task_idx,
                             SimTask {
+                                checkpoint_data: new_checkpoint_data,
                                 action: expand_action,
                                 saving_idx: saving_idx,
                                 action_applied: true,
@@ -353,15 +359,15 @@ impl<
             let task_idx = self.pending_simulation_tasks.pop_front().unwrap();
             let sim_task = self.simulation_tasks.get(&task_idx).unwrap().clone();
             let curr_node_copy = Rc::clone(self.simulation_nodes_copy.get(&task_idx).unwrap());
-            let sim_checkpoint_data = self.checkpoint_data_manager.retrieve(sim_task.saving_idx);
             // schedule
-            self.sim_pool
-                .assign_simulation_task(sim_task, sim_checkpoint_data, task_idx);
+            self.sim_pool.assign_simulation_task(sim_task, task_idx);
             // incomplete update
             self.incomplete_update(Rc::clone(&curr_node_copy), task_idx);
         }
         // update
-        if self.sim_pool.occupancy() > 0.99 {
+        while self.sim_pool.occupancy() > 0.8
+            || (self.budget == sim_idx + 1 && self.simulation_count != self.budget)
+        {
             let reply = self.sim_pool.get_complete_task();
             if let Reply::DoneSimulation(task_idx, accu_reward) = reply {
                 // fetch

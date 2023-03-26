@@ -1,3 +1,6 @@
+#[allow(unused_imports)]
+use crate::eg_env::EgraphEnv;
+#[allow(unused_imports)]
 use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
 
@@ -12,7 +15,7 @@ pub enum Message {
     #[allow(unused_variables)]
     Nothing,
     Expansion(ExpTask, u32, u32),
-    Simulation(SimTask, Vec<usize>, u32),
+    Simulation(SimTask, u32),
 }
 
 pub enum Reply {
@@ -89,8 +92,8 @@ pub fn worker_loop<
                     .unwrap();
                 }
 
-                Message::Simulation(sim_task, sim_checkpoint_data, task_idx) => {
-                    env.restore(sim_checkpoint_data);
+                Message::Simulation(sim_task, task_idx) => {
+                    env.restore(sim_task.checkpoint_data);
                     assert!(sim_task.action_applied);
 
                     let mut cnt = 0;

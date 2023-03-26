@@ -3,10 +3,10 @@ use egg::{
     SimpleScheduler, StopReason,
 };
 // use std::collections::HashMap;
-use std::time::Duration;
 use crate::env::Info;
+use std::time::Duration;
 
-pub struct EG_Env<L: Language, N: Analysis<L>> {
+pub struct EgraphEnv<L: Language, N: Analysis<L>> {
     expr: RecExpr<L>,
     egraph: EGraph<L, N>,
     root_id: Id,
@@ -25,7 +25,7 @@ pub struct EG_Env<L: Language, N: Analysis<L>> {
 impl<
         L: Language + egg::FromOp + std::marker::Send,
         N: Analysis<L> + Clone + std::default::Default,
-    > EG_Env<L, N>
+    > EgraphEnv<L, N>
 {
     pub fn new(
         expr: RecExpr<L>,
@@ -36,7 +36,7 @@ impl<
         // get base
         let runner: Runner<L, N> = Runner::default().with_expr(&expr);
         let (base_cost, _) = Extractor::new(&runner.egraph, AstSize).find_best(runner.roots[0]);
-        EG_Env {
+        EgraphEnv {
             expr: expr,
             egraph: EGraph::default(),
             root_id: Id::default(),
@@ -126,15 +126,15 @@ impl<
     //     reward as f32
     // }
 
-    pub fn get_action_space(&self) -> usize {
-        self.num_rules
-    }
+    // pub fn get_action_space(&self) -> usize {
+    //     self.num_rules
+    // }
 
-    pub fn checkpoint(&self) -> (u32, u32, EGraph<L, N>, Id, usize, usize) {
-        (self.cnt, self.sat_counter, self.egraph.clone(), self.root_id.clone(), self.last_cost, self.base_cost)
-    }
+    // pub fn checkpoint(&self) -> (u32, u32, EGraph<L, N>, Id, usize, usize) {
+    //     (self.cnt, self.sat_counter, self.egraph.clone(), self.root_id.clone(), self.last_cost, self.base_cost)
+    // }
 
-    pub fn restore(&mut self, checkpoint_data: (u32, u32, EGraph<L, N>, Id, usize, usize) ) {
-        (self.cnt, self.sat_counter, self.egraph, self.root_id, self.last_cost, self.base_cost) = checkpoint_data
-    }
+    // pub fn restore(&mut self, checkpoint_data: (u32, u32, EGraph<L, N>, Id, usize, usize) ) {
+    //     (self.cnt, self.sat_counter, self.egraph, self.root_id, self.last_cost, self.base_cost) = checkpoint_data
+    // }
 }

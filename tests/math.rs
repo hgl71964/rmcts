@@ -360,13 +360,13 @@ fn math_mcts_geb() {
     let seed = 1;
     let expr = build_rand_expr(seed, depth);
     let args = MCTSArgs {
-        budget: 128,
-        max_sim_step: 5,
+        budget: 512,
+        max_sim_step: 10,
         gamma: 0.99,
         expansion_worker_num: 1,
-        simulation_worker_num: 16,
+        simulation_worker_num: 22,
         node_limit: 10_000,
-        time_limit: 5,
+        time_limit: 20,
     };
     run_mcts(expr, rules(), Some(args));
 }
