@@ -4,13 +4,20 @@ use crate::eg_env::EgraphEnv;
 use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
 
-use egg::{Analysis, Language, RecExpr, Rewrite, StopReason};
+use egg::{Analysis, EGraph, Id, Language, RecExpr, Rewrite, StopReason};
 use rand::Rng;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-pub enum Message<L, N> {
+pub enum Message<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
     Exit,
     #[allow(unused_variables)]
     Nothing,
@@ -18,16 +25,29 @@ pub enum Message<L, N> {
     Simulation(SimTask<L, N>, u32),
 }
 
-pub enum Reply {
+pub enum Reply<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
     OK,
-    DoneExpansion(usize, (), f32, bool, bool, Option<Vec<usize>>, u32, u32),
+    DoneExpansion(
+        usize,
+        (),
+        f32,
+        bool,
+        bool,
+        Option<(u32, usize, EGraph<L, N>, Id, usize, usize)>,
+        u32,
+        u32,
+    ),
     DoneSimulation(u32, f32),
 }
 
-pub fn worker_loop<
-    L: Language + 'static + egg::FromOp + std::marker::Send,
-    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
->(
+pub fn worker_loop<L, N>(
     id: usize,
     gamma: f32,
     max_sim_step: u32,
@@ -39,14 +59,21 @@ pub fn worker_loop<
 ) -> (
     thread::JoinHandle<()>,
     mpsc::Sender<Message<L, N>>,
-    mpsc::Receiver<Reply>,
-) {
+    mpsc::Receiver<Reply<L, N>>,
+)
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
     let (tx, rx) = mpsc::channel();
     let (tx2, rx2) = mpsc::channel();
     let handle = thread::spawn(move || {
         // make env
-        let mut env = Env::new(expr, rules, node_limit, time_limit);
-        // let mut env = EgraphEnv::new(expr, rules, node_limit, time_limit);
+        // let mut env = Env::new(expr, rules, node_limit, time_limit);
+        let mut env = EgraphEnv::new(expr, rules, node_limit, time_limit);
         env.reset();
         // worker loop
         loop {
@@ -65,7 +92,7 @@ pub fn worker_loop<
                     env.restore(exp_task.checkpoint_data);
                     let expand_action = exp_task.shallow_copy_node.select_expansion_action();
                     let (next_state, reward, done, info) = env.step(expand_action);
-                    let new_checkpoint_data: Option<Vec<usize>>;
+                    let new_checkpoint_data;
                     if done {
                         new_checkpoint_data = None;
                     } else {

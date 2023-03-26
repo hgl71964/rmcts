@@ -10,6 +10,7 @@ pub struct Info {
     pub best_cost: usize,
 }
 
+#[allow(dead_code)]
 pub struct Env<L: Language, N: Analysis<L>> {
     action_history: Vec<usize>,
     expr: RecExpr<L>,
@@ -27,10 +28,12 @@ pub struct Env<L: Language, N: Analysis<L>> {
     sat_counter: usize,
 }
 
-impl<
-        L: Language + egg::FromOp + std::marker::Send,
-        N: Analysis<L> + Clone + std::default::Default,
-    > Env<L, N>
+#[allow(dead_code)]
+impl<L, N> Env<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    N::Data: Clone,
 {
     pub fn new(
         expr: RecExpr<L>,

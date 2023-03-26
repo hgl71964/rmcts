@@ -12,14 +12,14 @@ pub struct MCTSArgs {
     pub time_limit: usize,
 }
 
-pub fn run_mcts<
+pub fn run_mcts<L, N>(expr: RecExpr<L>, rules: Vec<Rewrite<L, N>>, args: Option<MCTSArgs>)
+where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
->(
-    expr: RecExpr<L>,
-    rules: Vec<Rewrite<L, N>>,
-    args: Option<MCTSArgs>,
-) {
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
     // Args
     // mcts
     let mut budget = 12;

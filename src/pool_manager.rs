@@ -11,7 +11,14 @@ enum Status {
     Idle,
 }
 
-pub struct PoolManager<L, N> {
+pub struct PoolManager<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
     #[allow(unused_variables, dead_code)]
     name: &'static str,
     work_num: usize, // TODO determine this automatically
@@ -20,13 +27,16 @@ pub struct PoolManager<L, N> {
     workers: Vec<thread::JoinHandle<()>>,
     worker_status: Vec<Status>,
     txs: Vec<Sender<Message<L, N>>>,
-    rxs: Vec<Receiver<Reply>>,
+    rxs: Vec<Receiver<Reply<L, N>>>,
 }
 
-impl<
-        L: Language + 'static + egg::FromOp + std::marker::Send,
-        N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    > PoolManager<L, N>
+impl<L, N> PoolManager<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
 {
     pub fn new(
         name: &'static str,
@@ -119,7 +129,7 @@ impl<
             / (self.work_num as f32)
     }
 
-    pub fn get_complete_task(&mut self) -> Reply {
+    pub fn get_complete_task(&mut self) -> Reply<L, N> {
         loop {
             for i in 0..self.work_num {
                 let reply = self.rxs[i].try_recv(); // non-blocking

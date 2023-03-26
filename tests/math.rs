@@ -364,7 +364,7 @@ fn math_mcts_geb() {
         max_sim_step: 10,
         gamma: 0.99,
         expansion_worker_num: 1,
-        simulation_worker_num: 22,
+        simulation_worker_num: 2,
         node_limit: 10_000,
         time_limit: 20,
     };

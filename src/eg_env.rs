@@ -1,7 +1,7 @@
 use crate::env::Info;
 use egg::{
-    Analysis, AstSize, EGraph, Extractor, Id, Language, RecExpr, Rewrite, Runner,
-    SimpleScheduler, StopReason,
+    Analysis, AstSize, EGraph, Extractor, Id, Language, RecExpr, Rewrite, Runner, SimpleScheduler,
+    StopReason,
 };
 use std::time::Duration;
 
@@ -15,8 +15,15 @@ use std::time::Duration;
 //     pub base_cost: usize,
 // }
 
-pub struct EgraphEnv<L: Language, N: Analysis<L>> {
-    expr: RecExpr<L>,
+pub struct EgraphEnv<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
+    // expr: RecExpr<L>,
     egraph: EGraph<L, N>,
     root_id: Id,
     num_rules: usize,
@@ -31,12 +38,13 @@ pub struct EgraphEnv<L: Language, N: Analysis<L>> {
     sat_counter: usize,
 }
 
-impl<
-        L: Language + egg::FromOp + std::marker::Send,
-        N: Analysis<L> + Clone + std::default::Default + std::marker::Send,
-    > EgraphEnv<L, N>
+impl<L, N> EgraphEnv<L, N>
 where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
     N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
 {
     pub fn new(
         expr: RecExpr<L>,
@@ -48,7 +56,7 @@ where
         let root = runner.roots[0];
         let (base_cost, _) = Extractor::new(&runner.egraph, AstSize).find_best(root);
         EgraphEnv {
-            expr: expr,
+            // expr: expr,
             egraph: EGraph::default(),
             root_id: root,
             num_rules: rules.len(),

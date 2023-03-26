@@ -7,7 +7,7 @@ use crate::node::{Node, NodeStub};
 use crate::pool_manager;
 use crate::workers::Reply;
 
-use egg::{Analysis, Language, RecExpr, Rewrite};
+use egg::{Analysis, EGraph, Id, Language, RecExpr, Rewrite};
 use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -18,16 +18,31 @@ use std::thread;
 use std::time::{Duration, Instant};
 // use log::info;
 
-pub struct ExpTask<L, N> {
-    pub checkpoint_data: Vec<usize>,
+pub struct ExpTask<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
+    // pub checkpoint_data: Vec<usize>,
+    pub checkpoint_data: (u32, usize, EGraph<L, N>, Id, usize, usize),
     pub shallow_copy_node: NodeStub,
     d1: PhantomData<L>,
     d2: PhantomData<N>,
 }
 
-#[derive(Debug, Clone)]
-pub struct SimTask<L, N> {
-    pub checkpoint_data: Vec<usize>,
+#[derive(Clone)]
+pub struct SimTask<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
+    pub checkpoint_data: (u32, usize, EGraph<L, N>, Id, usize, usize),
     pub action: usize,
     pub saving_idx: u32,
     pub action_applied: bool,
@@ -36,7 +51,14 @@ pub struct SimTask<L, N> {
     d2: PhantomData<N>,
 }
 
-pub struct Tree<L, N> {
+pub struct Tree<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
     // from param
     budget: u32,
     gamma: f32,
@@ -44,7 +66,8 @@ pub struct Tree<L, N> {
     // data and concurrency
     exp_pool: pool_manager::PoolManager<L, N>,
     sim_pool: pool_manager::PoolManager<L, N>,
-    ckpts: HashMap<u32, Vec<usize>>,
+    // ckpts: HashMap<u32, Vec<usize>>,
+    ckpts: HashMap<u32, (u32, usize, EGraph<L, N>, Id, usize, usize)>,
 
     // for planning
     root_node: Rc<RefCell<Node>>,
@@ -65,10 +88,12 @@ pub struct Tree<L, N> {
     time_limit: usize,
 }
 
-impl<
-        L: Language + 'static + egg::FromOp + std::marker::Send,
-        N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    > Tree<L, N>
+impl<L, N> Tree<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
 {
     pub fn new(
         // mcts
@@ -130,8 +155,8 @@ impl<
 
     pub fn run_loop(&mut self, expr: RecExpr<L>, rules: Vec<Rewrite<L, N>>) {
         // env
-        let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
-        // let mut env = EgraphEnv::new(expr, rules, self.node_limit, self.time_limit);
+        // let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
+        let mut env = EgraphEnv::new(expr, rules, self.node_limit, self.time_limit);
         env.reset();
 
         // loop var
@@ -171,8 +196,8 @@ impl<
         self.close();
     }
 
-    fn plan(&mut self, _state: &(), env: &Env<L, N>) -> usize {
-    // fn plan(&mut self, _state: &(), env: &EgraphEnv<L, N>) -> usize {
+    // fn plan(&mut self, _state: &(), env: &Env<L, N>) -> usize {
+    fn plan(&mut self, _state: &(), env: &EgraphEnv<L, N>) -> usize {
         // skip if action space is 1
         let action_n = env.get_action_space();
         if action_n == 1 {
