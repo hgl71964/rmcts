@@ -10,7 +10,6 @@ pub struct Ckpt<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
@@ -19,7 +18,6 @@ where
     pub egraph: EGraph<L, N>,
     pub root_id: Id,
     pub last_cost: usize,
-    pub base_cost: usize,
     // debug term
     // pub egraph_nodes: usize,
     // pub egraph_classes: usize,
@@ -30,7 +28,6 @@ pub struct EgraphEnv<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
@@ -53,7 +50,6 @@ impl<L, N> EgraphEnv<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
@@ -125,9 +121,16 @@ where
                 self.sat_counter = 0;
             }
             StopReason::TimeLimit(time) => {
-                // TODO think about how this enables dealing with straggelers!
-                // TODO why only mcts-geb explode the egraph??
-                panic!("egg time limit {}", time);
+                // TODO this indicates egraph is exploded?
+                done = true;
+                println!(
+                    "EGG TimeLimit {} - {} - {} - {} - {}",
+                    time,
+                    report.total_time,
+                    report.egraph_nodes,
+                    report.egraph_classes,
+                    report.memo_size,
+                );
             }
             StopReason::Saturated => {
                 self.sat_counter += 1;
@@ -138,6 +141,7 @@ where
             StopReason::IterationLimit(_) => self.sat_counter = 0,
             _ => self.sat_counter = 0,
         }
+        // compute reward
         let reward = std::cmp::max(self.last_cost - best_cost, 0); // TODO allow callback cost func
         self.last_cost = best_cost;
         let info = Info {
@@ -168,7 +172,6 @@ where
             egraph: self.egraph.clone(),
             root_id: self.root_id.clone(),
             last_cost: self.last_cost,
-            base_cost: self.base_cost,
             // egraph_nodes: self.egraph.total_number_of_nodes(),
             // egraph_classes: self.egraph.number_of_classes(),
             // memo_size: self.egraph.total_size(),
@@ -181,7 +184,6 @@ where
         self.egraph = checkpoint_data.egraph;
         self.root_id = checkpoint_data.root_id;
         self.last_cost = checkpoint_data.last_cost;
-        self.base_cost = checkpoint_data.base_cost;
         // debug
         // print!("[Debug] {} - {} - {}\t", checkpoint_data.egraph_nodes, checkpoint_data.egraph_classes, checkpoint_data.memo_size);
         // print!("[Self] {} - {} - {}\t", self.egraph.total_number_of_nodes(), self.egraph.number_of_classes(), self.egraph.total_size());

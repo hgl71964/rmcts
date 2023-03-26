@@ -366,7 +366,7 @@ fn math_mcts_geb() {
         expansion_worker_num: 1,
         simulation_worker_num: 22,
         node_limit: 10_000,
-        time_limit: 5,
+        time_limit: 10,
     };
     run_mcts(expr, rules(), Some(args));
 }
