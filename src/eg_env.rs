@@ -1,10 +1,19 @@
+use crate::env::Info;
 use egg::{
-    Analysis, AstSize, EGraph, Extractor, Id, Language, RecExpr, Report, Rewrite, Runner,
+    Analysis, AstSize, EGraph, Extractor, Id, Language, RecExpr, Rewrite, Runner,
     SimpleScheduler, StopReason,
 };
-// use std::collections::HashMap;
-use crate::env::Info;
 use std::time::Duration;
+
+// #[derive(Clone)]
+// pub struct Ckpt<L: Language, N: Analysis<L>+Clone> where N::Data: Clone {
+//     pub cnt: u32,
+//     pub sat_counter: usize,
+//     pub egraph: EGraph<L,N>,
+//     pub id: Id,
+//     pub last_cost: usize,
+//     pub base_cost: usize,
+// }
 
 pub struct EgraphEnv<L: Language, N: Analysis<L>> {
     expr: RecExpr<L>,
@@ -24,8 +33,10 @@ pub struct EgraphEnv<L: Language, N: Analysis<L>> {
 
 impl<
         L: Language + egg::FromOp + std::marker::Send,
-        N: Analysis<L> + Clone + std::default::Default,
+        N: Analysis<L> + Clone + std::default::Default + std::marker::Send,
     > EgraphEnv<L, N>
+where
+    N::Data: Clone,
 {
     pub fn new(
         expr: RecExpr<L>,
@@ -33,13 +44,13 @@ impl<
         node_limit: usize,
         time_limit: usize,
     ) -> Self {
-        // get base
         let runner: Runner<L, N> = Runner::default().with_expr(&expr);
-        let (base_cost, _) = Extractor::new(&runner.egraph, AstSize).find_best(runner.roots[0]);
+        let root = runner.roots[0];
+        let (base_cost, _) = Extractor::new(&runner.egraph, AstSize).find_best(root);
         EgraphEnv {
             expr: expr,
             egraph: EGraph::default(),
-            root_id: Id::default(),
+            root_id: root,
             num_rules: rules.len(),
             rules: rules,
             node_limit: node_limit,
@@ -56,7 +67,6 @@ impl<
         self.cnt = 0;
         self.sat_counter = 0;
         self.egraph = EGraph::default();
-        self.root_id = self.egraph.add_expr(&self.expr);
         self.last_cost = self.base_cost;
     }
 
@@ -126,15 +136,29 @@ impl<
     //     reward as f32
     // }
 
-    // pub fn get_action_space(&self) -> usize {
-    //     self.num_rules
-    // }
+    pub fn get_action_space(&self) -> usize {
+        self.num_rules
+    }
 
-    // pub fn checkpoint(&self) -> (u32, u32, EGraph<L, N>, Id, usize, usize) {
-    //     (self.cnt, self.sat_counter, self.egraph.clone(), self.root_id.clone(), self.last_cost, self.base_cost)
-    // }
+    pub fn checkpoint(&self) -> (u32, usize, EGraph<L, N>, Id, usize, usize) {
+        (
+            self.cnt,
+            self.sat_counter,
+            self.egraph.clone(),
+            self.root_id.clone(),
+            self.last_cost,
+            self.base_cost,
+        )
+    }
 
-    // pub fn restore(&mut self, checkpoint_data: (u32, u32, EGraph<L, N>, Id, usize, usize) ) {
-    //     (self.cnt, self.sat_counter, self.egraph, self.root_id, self.last_cost, self.base_cost) = checkpoint_data
-    // }
+    pub fn restore(&mut self, checkpoint_data: (u32, usize, EGraph<L, N>, Id, usize, usize)) {
+        (
+            self.cnt,
+            self.sat_counter,
+            self.egraph,
+            self.root_id,
+            self.last_cost,
+            self.base_cost,
+        ) = checkpoint_data
+    }
 }

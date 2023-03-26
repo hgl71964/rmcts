@@ -46,6 +46,7 @@ pub fn worker_loop<
     let handle = thread::spawn(move || {
         // make env
         let mut env = Env::new(expr, rules, node_limit, time_limit);
+        // let mut env = EgraphEnv::new(expr, rules, node_limit, time_limit);
         env.reset();
         // worker loop
         loop {

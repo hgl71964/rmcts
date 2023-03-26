@@ -131,6 +131,7 @@ impl<
     pub fn run_loop(&mut self, expr: RecExpr<L>, rules: Vec<Rewrite<L, N>>) {
         // env
         let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
+        // let mut env = EgraphEnv::new(expr, rules, self.node_limit, self.time_limit);
         env.reset();
 
         // loop var
@@ -171,6 +172,7 @@ impl<
     }
 
     fn plan(&mut self, _state: &(), env: &Env<L, N>) -> usize {
+    // fn plan(&mut self, _state: &(), env: &EgraphEnv<L, N>) -> usize {
         // skip if action space is 1
         let action_n = env.get_action_space();
         if action_n == 1 {
