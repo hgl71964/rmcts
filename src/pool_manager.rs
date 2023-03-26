@@ -15,7 +15,6 @@ pub struct PoolManager<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
@@ -34,7 +33,6 @@ impl<L, N> PoolManager<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {

@@ -16,7 +16,6 @@ pub fn run_mcts<L, N>(expr: RecExpr<L>, rules: Vec<Rewrite<L, N>>, args: Option<
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {

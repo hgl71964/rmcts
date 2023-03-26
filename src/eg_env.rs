@@ -5,15 +5,26 @@ use egg::{
 };
 use std::time::Duration;
 
-// #[derive(Clone)]
-// pub struct Ckpt<L: Language, N: Analysis<L>+Clone> where N::Data: Clone {
-//     pub cnt: u32,
-//     pub sat_counter: usize,
-//     pub egraph: EGraph<L,N>,
-//     pub id: Id,
-//     pub last_cost: usize,
-//     pub base_cost: usize,
-// }
+#[derive(Clone)]
+pub struct Ckpt<L, N>
+where
+    L: Language + 'static + egg::FromOp + std::marker::Send,
+    N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
+    // N::Data: Clone
+    N::Data: Clone,
+    <N as Analysis<L>>::Data: Send,
+{
+    pub cnt: u32,
+    pub sat_counter: usize,
+    pub egraph: EGraph<L, N>,
+    pub root_id: Id,
+    pub last_cost: usize,
+    pub base_cost: usize,
+    // debug term
+    // pub egraph_nodes: usize,
+    // pub egraph_classes: usize,
+    // pub memo_size: usize,
+}
 
 pub struct EgraphEnv<L, N>
 where
@@ -23,7 +34,7 @@ where
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
-    // expr: RecExpr<L>,
+    expr: RecExpr<L>,
     egraph: EGraph<L, N>,
     root_id: Id,
     num_rules: usize,
@@ -56,7 +67,7 @@ where
         let root = runner.roots[0];
         let (base_cost, _) = Extractor::new(&runner.egraph, AstSize).find_best(root);
         EgraphEnv {
-            // expr: expr,
+            expr: expr,
             egraph: EGraph::default(),
             root_id: root,
             num_rules: rules.len(),
@@ -75,6 +86,7 @@ where
         self.cnt = 0;
         self.sat_counter = 0;
         self.egraph = EGraph::default();
+        self.egraph.add_expr(&self.expr);
         self.last_cost = self.base_cost;
     }
 
@@ -114,6 +126,7 @@ where
             }
             StopReason::TimeLimit(time) => {
                 // TODO think about how this enables dealing with straggelers!
+                // TODO why only mcts-geb explode the egraph??
                 panic!("egg time limit {}", time);
             }
             StopReason::Saturated => {
@@ -148,25 +161,30 @@ where
         self.num_rules
     }
 
-    pub fn checkpoint(&self) -> (u32, usize, EGraph<L, N>, Id, usize, usize) {
-        (
-            self.cnt,
-            self.sat_counter,
-            self.egraph.clone(),
-            self.root_id.clone(),
-            self.last_cost,
-            self.base_cost,
-        )
+    pub fn checkpoint(&self) -> Ckpt<L, N> {
+        Ckpt {
+            cnt: self.cnt,
+            sat_counter: self.sat_counter,
+            egraph: self.egraph.clone(),
+            root_id: self.root_id.clone(),
+            last_cost: self.last_cost,
+            base_cost: self.base_cost,
+            // egraph_nodes: self.egraph.total_number_of_nodes(),
+            // egraph_classes: self.egraph.number_of_classes(),
+            // memo_size: self.egraph.total_size(),
+        }
     }
 
-    pub fn restore(&mut self, checkpoint_data: (u32, usize, EGraph<L, N>, Id, usize, usize)) {
-        (
-            self.cnt,
-            self.sat_counter,
-            self.egraph,
-            self.root_id,
-            self.last_cost,
-            self.base_cost,
-        ) = checkpoint_data
+    pub fn restore(&mut self, checkpoint_data: Ckpt<L, N>) {
+        self.cnt = checkpoint_data.cnt;
+        self.sat_counter = checkpoint_data.sat_counter;
+        self.egraph = checkpoint_data.egraph;
+        self.root_id = checkpoint_data.root_id;
+        self.last_cost = checkpoint_data.last_cost;
+        self.base_cost = checkpoint_data.base_cost;
+        // debug
+        // print!("[Debug] {} - {} - {}\t", checkpoint_data.egraph_nodes, checkpoint_data.egraph_classes, checkpoint_data.memo_size);
+        // print!("[Self] {} - {} - {}\t", self.egraph.total_number_of_nodes(), self.egraph.number_of_classes(), self.egraph.total_size());
+        // println!("[ROOT] {}", self.root_id);
     }
 }

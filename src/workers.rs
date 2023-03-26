@@ -1,7 +1,5 @@
-#[allow(unused_imports)]
-use crate::eg_env::EgraphEnv;
-#[allow(unused_imports)]
-use crate::env::Env;
+use crate::eg_env::{Ckpt, EgraphEnv};
+// use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
 
 use egg::{Analysis, EGraph, Id, Language, RecExpr, Rewrite, StopReason};
@@ -14,7 +12,6 @@ pub enum Message<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
@@ -29,21 +26,11 @@ pub enum Reply<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
     OK,
-    DoneExpansion(
-        usize,
-        (),
-        f32,
-        bool,
-        bool,
-        Option<(u32, usize, EGraph<L, N>, Id, usize, usize)>,
-        u32,
-        u32,
-    ),
+    DoneExpansion(usize, (), f32, bool, bool, Option<Ckpt<L, N>>, u32, u32),
     DoneSimulation(u32, f32),
 }
 
@@ -64,7 +51,6 @@ pub fn worker_loop<L, N>(
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {

@@ -1,8 +1,6 @@
 // use crate::checkpoint_manager;
-#[allow(unused_imports)]
-use crate::eg_env::EgraphEnv;
-#[allow(unused_imports)]
-use crate::env::Env;
+use crate::eg_env::{Ckpt, EgraphEnv};
+// use crate::env::Env;
 use crate::node::{Node, NodeStub};
 use crate::pool_manager;
 use crate::workers::Reply;
@@ -22,12 +20,11 @@ pub struct ExpTask<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
     // pub checkpoint_data: Vec<usize>,
-    pub checkpoint_data: (u32, usize, EGraph<L, N>, Id, usize, usize),
+    pub checkpoint_data: Ckpt<L, N>,
     pub shallow_copy_node: NodeStub,
     d1: PhantomData<L>,
     d2: PhantomData<N>,
@@ -38,11 +35,10 @@ pub struct SimTask<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
-    pub checkpoint_data: (u32, usize, EGraph<L, N>, Id, usize, usize),
+    pub checkpoint_data: Ckpt<L, N>,
     pub action: usize,
     pub saving_idx: u32,
     pub action_applied: bool,
@@ -55,7 +51,6 @@ pub struct Tree<L, N>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
-    // N::Data: Clone
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
 {
@@ -67,7 +62,7 @@ where
     exp_pool: pool_manager::PoolManager<L, N>,
     sim_pool: pool_manager::PoolManager<L, N>,
     // ckpts: HashMap<u32, Vec<usize>>,
-    ckpts: HashMap<u32, (u32, usize, EGraph<L, N>, Id, usize, usize)>,
+    ckpts: HashMap<u32, Ckpt<L, N>>,
 
     // for planning
     root_node: Rc<RefCell<Node>>,
@@ -400,7 +395,7 @@ where
             self.incomplete_update(Rc::clone(&curr_node_copy), task_idx);
         }
         // update
-        while self.sim_pool.occupancy() > 0.8
+        while self.sim_pool.occupancy() > 0.5
             || (self.budget == sim_idx + 1 && self.simulation_count != self.budget)
         {
             let reply = self.sim_pool.get_complete_task();
