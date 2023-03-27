@@ -34,6 +34,7 @@ define_language! {
 
 // You could use egg::AstSize, but this is useful for debugging, since
 // it will really try to get rid of the Diff operator
+#[derive(Clone)]
 pub struct MathCostFn;
 impl egg::CostFunction<Math> for MathCostFn {
     type Cost = usize;
@@ -338,11 +339,13 @@ fn math_egg() {
         };
         let root = runner.roots[0];
         // base cost
-        let extractor = Extractor::new(&runner.egraph, AstSize);
+        // let extractor = Extractor::new(&runner.egraph, AstSize);
+        let extractor = Extractor::new(&runner.egraph, MathCostFn);
         let (base_cost, _base) = extractor.find_best(root);
         // best
         let runner = runner.run(&rules());
-        let extractor = Extractor::new(&runner.egraph, AstSize);
+        // let extractor = Extractor::new(&runner.egraph, AstSize);
+        let extractor = Extractor::new(&runner.egraph, MathCostFn);
         let (best_cost, best) = extractor.find_best(root);
         println!(
             "Simplified {} to {} with base_cost {} -> cost {}",
@@ -369,5 +372,5 @@ fn math_mcts_geb() {
         node_limit: 10_000,
         time_limit: 10,
     };
-    run_mcts(expr, rules(), Some(args));
+    run_mcts(expr, rules(), MathCostFn, Some(args));
 }

@@ -26,6 +26,19 @@ fn make_rules() -> Vec<Rewrite<SimpleLanguage, ()>> {
     ]
 }
 
+// from egg, and we need Clone trait
+#[derive(Debug, Clone)]
+pub struct AstSize;
+impl<L: Language> CostFunction<L> for AstSize {
+    type Cost = usize;
+    fn cost<C>(&mut self, enode: &L, mut costs: C) -> Self::Cost
+    where
+        C: FnMut(Id) -> Self::Cost,
+    {
+        enode.fold(1, |sum, id| sum.saturating_add(costs(id)))
+    }
+}
+
 fn main() {
-    run::run_mcts("(* 0 42)".parse().unwrap(), make_rules(), None);
+    run::run_mcts("(* 0 42)".parse().unwrap(), make_rules(), AstSize, None);
 }

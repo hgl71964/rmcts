@@ -4,7 +4,7 @@ use crate::node::{Node, NodeStub};
 use crate::pool_manager;
 use crate::workers::Reply;
 
-use egg::{Analysis, Language, RecExpr, Rewrite};
+use egg::{Analysis, CostFunction, Language, RecExpr, Rewrite};
 use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -46,22 +46,25 @@ where
     d2: PhantomData<N>,
 }
 
-pub struct Tree<L, N>
+pub struct Tree<L, N, CF>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
+    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    usize: From<<CF as CostFunction<L>>::Cost>,
 {
     // from param
     budget: u32,
     gamma: f32,
 
     // data and concurrency
-    exp_pool: pool_manager::PoolManager<L, N>,
-    sim_pool: pool_manager::PoolManager<L, N>,
+    exp_pool: pool_manager::PoolManager<L, N, CF>,
+    sim_pool: pool_manager::PoolManager<L, N, CF>,
     // ckpts: HashMap<u32, Vec<usize>>,
     ckpts: HashMap<u32, Ckpt<L, N>>,
+    cf: CF,
 
     // for planning
     root_node: Rc<RefCell<Node>>,
@@ -82,12 +85,14 @@ where
     time_limit: usize,
 }
 
-impl<L, N> Tree<L, N>
+impl<L, N, CF> Tree<L, N, CF>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
+    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    usize: From<<CF as CostFunction<L>>::Cost>,
 {
     pub fn new(
         // mcts
@@ -99,6 +104,7 @@ where
         // egg
         expr: RecExpr<L>,
         rules: Vec<Rewrite<L, N>>,
+        cf: CF,
         node_limit: usize,
         time_limit: usize,
     ) -> Self {
@@ -115,6 +121,7 @@ where
                 false,
                 expr.clone(),
                 rules.clone(),
+                cf.clone(),
                 node_limit,
                 time_limit,
             ),
@@ -126,10 +133,12 @@ where
                 false,
                 expr.clone(),
                 rules.clone(),
+                cf.clone(),
                 node_limit,
                 time_limit,
             ),
             ckpts: HashMap::new(),
+            cf: cf,
 
             root_node: Node::dummy(),
             global_saving_idx: 0,
@@ -150,7 +159,13 @@ where
     pub fn run_loop(&mut self, expr: RecExpr<L>, rules: Vec<Rewrite<L, N>>) {
         // env
         // let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
-        let mut env = EgraphEnv::new(expr, rules, self.node_limit, self.time_limit);
+        let mut env = EgraphEnv::new(
+            expr,
+            rules,
+            self.cf.clone(),
+            self.node_limit,
+            self.time_limit,
+        );
         env.reset();
 
         // loop var
@@ -193,7 +208,7 @@ where
     }
 
     // fn plan(&mut self, _state: &(), env: &Env<L, N>) -> usize {
-    fn plan(&mut self, _state: &(), env: &EgraphEnv<L, N>) -> usize {
+    fn plan(&mut self, _state: &(), env: &EgraphEnv<L, N, CF>) -> usize {
         // skip if action space is 1
         let action_n = env.get_action_space();
         if action_n == 1 {

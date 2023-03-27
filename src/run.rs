@@ -1,5 +1,5 @@
 use crate::tree;
-use egg::{Analysis, Language, RecExpr, Rewrite};
+use egg::{Analysis, CostFunction, Language, RecExpr, Rewrite};
 
 pub struct MCTSArgs {
     pub budget: u32,
@@ -12,12 +12,18 @@ pub struct MCTSArgs {
     pub time_limit: usize,
 }
 
-pub fn run_mcts<L, N>(expr: RecExpr<L>, rules: Vec<Rewrite<L, N>>, args: Option<MCTSArgs>)
-where
+pub fn run_mcts<L, N, CF>(
+    expr: RecExpr<L>,
+    rules: Vec<Rewrite<L, N>>,
+    cf: CF,
+    args: Option<MCTSArgs>,
+) where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
+    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    usize: From<<CF as CostFunction<L>>::Cost>,
 {
     // Args
     // mcts
@@ -57,6 +63,7 @@ where
         // egg
         expr.clone(),
         rules.clone(),
+        cf,
         node_limit,
         time_limit,
     );

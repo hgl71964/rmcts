@@ -1,7 +1,7 @@
 use crate::env::Info;
 use egg::{
-    Analysis, AstSize, EGraph, Extractor, Id, Language, RecExpr, Rewrite, Runner, SimpleScheduler,
-    StopReason,
+    Analysis, CostFunction, EGraph, Extractor, Id, Language, RecExpr, Rewrite, Runner,
+    SimpleScheduler, StopReason,
 };
 use std::time::Duration;
 
@@ -24,15 +24,18 @@ where
     // pub memo_size: usize,
 }
 
-pub struct EgraphEnv<L, N>
+pub struct EgraphEnv<L, N, CF>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
+    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    usize: From<<CF as CostFunction<L>>::Cost>,
 {
     expr: RecExpr<L>,
     egraph: EGraph<L, N>,
+    cf: CF,
     root_id: Id,
     num_rules: usize,
     rules: Vec<Rewrite<L, N>>,
@@ -46,33 +49,37 @@ where
     sat_counter: usize,
 }
 
-impl<L, N> EgraphEnv<L, N>
+impl<L, N, CF> EgraphEnv<L, N, CF>
 where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
+    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    usize: From<<CF as CostFunction<L>>::Cost>,
 {
     pub fn new(
         expr: RecExpr<L>,
         rules: Vec<Rewrite<L, N>>,
+        cf: CF,
         node_limit: usize,
         time_limit: usize,
     ) -> Self {
         let runner: Runner<L, N> = Runner::default().with_expr(&expr);
         let root = runner.roots[0];
-        let (base_cost, _) = Extractor::new(&runner.egraph, AstSize).find_best(root);
+        let (base_cost, _) = Extractor::new(&runner.egraph, cf.clone()).find_best(root);
         EgraphEnv {
             expr: expr,
             egraph: EGraph::default(),
+            cf: cf,
             root_id: root,
             num_rules: rules.len(),
             rules: rules,
             node_limit: node_limit,
             time_limit: Duration::from_secs(time_limit.try_into().unwrap()),
 
-            base_cost: base_cost,
-            last_cost: base_cost,
+            base_cost: usize::try_from(base_cost).unwrap(),
+            last_cost: 0,
             cnt: 0,
             sat_counter: 0,
         }
@@ -109,8 +116,9 @@ where
         //     .sum();
 
         // run extract
-        let extractor = Extractor::new(&self.egraph, AstSize);
+        let extractor = Extractor::new(&self.egraph, self.cf.clone());
         let (best_cost, _) = extractor.find_best(self.root_id);
+        let best_cost = usize::try_from(best_cost).unwrap();
 
         // compute transition
         self.cnt += 1;

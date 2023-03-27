@@ -46,6 +46,19 @@ fn simplify(s: &str) -> String {
     best.to_string()
 }
 
+// from egg, and we need Clone trait
+#[derive(Debug, Clone)]
+pub struct AstSize;
+impl<L: Language> CostFunction<L> for AstSize {
+    type Cost = usize;
+    fn cost<C>(&mut self, enode: &L, mut costs: C) -> Self::Cost
+    where
+        C: FnMut(Id) -> Self::Cost,
+    {
+        enode.fold(1, |sum, id| sum.saturating_add(costs(id)))
+    }
+}
+
 #[test]
 fn simple_egg_test() {
     assert_eq!(simplify("(* 0 42)"), "0");
@@ -56,5 +69,5 @@ fn simple_egg_test() {
 fn simple_mcts_geb_test() {
     let expr = "(* 0 42)";
     let rws = make_rules();
-    run::run_mcts(expr.parse().unwrap(), rws, None);
+    run::run_mcts(expr.parse().unwrap(), rws, AstSize, None);
 }
