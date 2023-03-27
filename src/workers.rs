@@ -160,7 +160,6 @@ where
                 }
             }
         }
-        // println!("Worker {} Exit successfully!", id);
     });
 
     (handle, tx, rx2)

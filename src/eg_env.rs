@@ -18,10 +18,6 @@ where
     pub egraph: EGraph<L, N>,
     pub root_id: Id,
     pub last_cost: usize,
-    // debug term
-    // pub egraph_nodes: usize,
-    // pub egraph_classes: usize,
-    // pub memo_size: usize,
 }
 
 pub struct EgraphEnv<L, N, CF>
@@ -150,7 +146,7 @@ where
             _ => self.sat_counter = 0,
         }
         // compute reward
-        let reward = std::cmp::max(self.last_cost - best_cost, 0); // TODO allow callback cost func
+        let reward = std::cmp::max(self.last_cost - best_cost, 0);
         self.last_cost = best_cost;
         let info = Info {
             report: report,
@@ -164,7 +160,7 @@ where
     // pub fn get_reward(&self) -> f32 {
     //     let extractor = Extractor::new(&self.egraph, AstSize);
     //     let (best_cost, _) = extractor.find_best(self.root_id);
-    //     let reward = std::cmp::max(self.last_cost - best_cost, 0); // TODO allow callback cost func
+    //     let reward = std::cmp::max(self.last_cost - best_cost, 0);
 
     //     reward as f32
     // }
@@ -180,9 +176,6 @@ where
             egraph: self.egraph.clone(),
             root_id: self.root_id.clone(),
             last_cost: self.last_cost,
-            // egraph_nodes: self.egraph.total_number_of_nodes(),
-            // egraph_classes: self.egraph.number_of_classes(),
-            // memo_size: self.egraph.total_size(),
         }
     }
 
@@ -192,9 +185,5 @@ where
         self.egraph = checkpoint_data.egraph;
         self.root_id = checkpoint_data.root_id;
         self.last_cost = checkpoint_data.last_cost;
-        // debug
-        // print!("[Debug] {} - {} - {}\t", checkpoint_data.egraph_nodes, checkpoint_data.egraph_classes, checkpoint_data.memo_size);
-        // print!("[Self] {} - {} - {}\t", self.egraph.total_number_of_nodes(), self.egraph.number_of_classes(), self.egraph.total_size());
-        // println!("[ROOT] {}", self.root_id);
     }
 }
