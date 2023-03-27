@@ -2,7 +2,7 @@ use crate::eg_env::{Ckpt, EgraphEnv};
 // use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
 
-use egg::{Analysis, EGraph, Id, Language, RecExpr, Rewrite, StopReason};
+use egg::{Analysis, Language, RecExpr, Rewrite, StopReason};
 use rand::Rng;
 use std::sync::mpsc;
 use std::thread;

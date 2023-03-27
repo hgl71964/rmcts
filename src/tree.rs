@@ -1,11 +1,10 @@
-// use crate::checkpoint_manager;
 use crate::eg_env::{Ckpt, EgraphEnv};
 // use crate::env::Env;
 use crate::node::{Node, NodeStub};
 use crate::pool_manager;
 use crate::workers::Reply;
 
-use egg::{Analysis, EGraph, Id, Language, RecExpr, Rewrite};
+use egg::{Analysis, Language, RecExpr, Rewrite};
 use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -161,12 +160,14 @@ where
         let mut info;
         let mut cnt = 0;
         let mut episode_reward = 0.0;
+        let mut total_planning_time = 0;
 
         // env loop
         loop {
             let planning_time = Instant::now();
             let action = self.plan(&state, &env);
             let planning_time = planning_time.elapsed().as_secs();
+            total_planning_time += planning_time;
 
             (state, reward, done, info) = env.step(action);
 
@@ -184,8 +185,8 @@ where
             }
         }
         println!(
-            "Done:: base_cost {} -> cost {}",
-            env.base_cost, info.best_cost,
+            "Done:: base_cost {} -> cost {} with time {}s",
+            env.base_cost, info.best_cost, total_planning_time,
         );
 
         self.close();

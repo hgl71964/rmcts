@@ -1,4 +1,3 @@
-mod checkpoint_manager;
 mod eg_env;
 mod env;
 mod node;

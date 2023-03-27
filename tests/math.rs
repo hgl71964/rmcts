@@ -359,12 +359,13 @@ fn math_mcts_geb() {
     let depth = 7;
     let seed = 1;
     let expr = build_rand_expr(seed, depth);
+    let n_threads = std::thread::available_parallelism().unwrap().get();
     let args = MCTSArgs {
         budget: 512,
         max_sim_step: 10,
         gamma: 0.99,
         expansion_worker_num: 1,
-        simulation_worker_num: 22,
+        simulation_worker_num: n_threads - 2,
         node_limit: 10_000,
         time_limit: 10,
     };

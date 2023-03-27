@@ -20,7 +20,7 @@ where
 {
     #[allow(unused_variables, dead_code)]
     name: &'static str,
-    work_num: usize, // TODO determine this automatically
+    work_num: usize,
 
     // self
     workers: Vec<thread::JoinHandle<()>>,
