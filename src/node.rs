@@ -191,7 +191,6 @@ impl Node {
     }
 
     pub fn update_complete(&mut self, idx: u32, accu_reward: f32) -> f32 {
-        // let (action_taken, reward) = self.traverse_history.get(&idx).unwrap().clone();
         let (action_taken, reward);
         match self.traverse_history.get(&idx) {
             Some((a, r)) => {

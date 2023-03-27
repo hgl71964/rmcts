@@ -157,7 +157,7 @@ where
                 }
             }
         }
-        println!("Worker {} Exit successfully!", id);
+        // println!("Worker {} Exit successfully!", id);
     });
 
     (handle, tx, rx2)

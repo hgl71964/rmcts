@@ -347,7 +347,7 @@ where
                             Rc::clone(&curr_node_copy),
                         );
                         self.incomplete_update(Rc::clone(&curr_node_copy), task_idx);
-                        self.complete_update(Rc::clone(&curr_node_copy), task_idx, 0.0); // TODO update with 0 accu_reward??
+                        self.complete_update(Rc::clone(&curr_node_copy), task_idx, 0.0);
                         self.simulation_count += 1;
                     } else {
                         // ELSE add_child will be done after simulation!
@@ -379,7 +379,7 @@ where
             // no need expansion
             // reach terminal node
             self.incomplete_update(Rc::clone(&curr_node), sim_idx);
-            self.complete_update(Rc::clone(&curr_node), sim_idx, 0.0); // TODO update with 0.0 reward?
+            self.complete_update(Rc::clone(&curr_node), sim_idx, 0.0);
             self.simulation_count += 1;
         }
 

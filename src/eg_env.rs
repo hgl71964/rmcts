@@ -124,7 +124,7 @@ where
                 // TODO this indicates egraph is exploded?
                 done = true;
                 println!(
-                    "EGG TimeLimit {} - {} - {} - {} - {}",
+                    "EGG TimeLimit {}s - {}s - {} - {} - {}",
                     time,
                     report.total_time,
                     report.egraph_nodes,
