@@ -1,5 +1,5 @@
 use crate::tree;
-use egg::{Analysis, CostFunction, Language, RecExpr, Rewrite};
+use egg::{Analysis, CostFunction, Language, LpCostFunction, RecExpr, Rewrite};
 
 pub struct MCTSArgs {
     pub budget: u32,
@@ -7,6 +7,7 @@ pub struct MCTSArgs {
     pub gamma: f32,
     pub expansion_worker_num: usize,
     pub simulation_worker_num: usize,
+    pub lp_extract: bool,
 
     pub node_limit: usize,
     pub time_limit: usize,
@@ -22,7 +23,7 @@ pub fn run_mcts<L, N, CF>(
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
-    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    CF: CostFunction<L> + LpCostFunction<L, N> + Clone + std::marker::Send + 'static,
     usize: From<<CF as CostFunction<L>>::Cost>,
 {
     // Args
@@ -32,6 +33,7 @@ pub fn run_mcts<L, N, CF>(
     let mut gamma = 0.99;
     let mut expansion_worker_num = 1;
     let mut simulation_worker_num = 4;
+    let mut lp_extract = false;
     // let verbose = false;
     // egg
     let mut node_limit = 10_000;
@@ -46,6 +48,7 @@ pub fn run_mcts<L, N, CF>(
             gamma = args.gamma;
             expansion_worker_num = args.expansion_worker_num;
             simulation_worker_num = args.simulation_worker_num;
+            lp_extract = args.lp_extract;
 
             node_limit = args.node_limit;
             time_limit = args.time_limit;
@@ -64,6 +67,7 @@ pub fn run_mcts<L, N, CF>(
         expr.clone(),
         rules.clone(),
         cf,
+        lp_extract,
         node_limit,
         time_limit,
     );

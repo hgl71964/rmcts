@@ -1,7 +1,7 @@
 use crate::tree::{ExpTask, SimTask};
 use crate::workers::{worker_loop, Message, Reply};
 
-use egg::{Analysis, CostFunction, Language, RecExpr, Rewrite};
+use egg::{Analysis, CostFunction, Language, LpCostFunction, RecExpr, Rewrite};
 use std::marker::PhantomData;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
@@ -18,7 +18,7 @@ where
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
-    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    CF: CostFunction<L> + LpCostFunction<L, N> + Clone + std::marker::Send + 'static,
     usize: From<<CF as CostFunction<L>>::Cost>,
 {
     #[allow(unused_variables, dead_code)]
@@ -39,7 +39,7 @@ where
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
-    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    CF: CostFunction<L> + LpCostFunction<L, N> + Clone + std::marker::Send + 'static,
     usize: From<<CF as CostFunction<L>>::Cost>,
 {
     pub fn new(
@@ -51,6 +51,7 @@ where
         expr: RecExpr<L>,
         rules: Vec<Rewrite<L, N>>,
         cf: CF,
+        lp_extract: bool,
         node_limit: usize,
         time_limit: usize,
     ) -> Self {
@@ -67,6 +68,7 @@ where
                 expr.clone(),
                 rules.clone(),
                 cf.clone(),
+                lp_extract,
                 node_limit,
                 time_limit,
             );

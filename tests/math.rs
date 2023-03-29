@@ -51,6 +51,13 @@ impl egg::CostFunction<Math> for MathCostFn {
     }
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "lp")))]
+impl LpCostFunction<Math, ConstantFold> for MathCostFn {
+    fn node_cost(&mut self, _egraph: &EGraph, _eclass: Id, _enode: &Math) -> f64 {
+        1.0
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct ConstantFold;
 impl Analysis<Math> for ConstantFold {
@@ -320,6 +327,27 @@ fn dfs(
 }
 
 #[test]
+fn math_lp_extract() {
+    let expr: RecExpr<Math> = "(pow (+ x (+ x x)) (+ x x))".parse().unwrap();
+
+    let runner: Runner<Math, ConstantFold> = Runner::default()
+        .with_iter_limit(3)
+        .with_expr(&expr)
+        .run(&rules());
+    let root = runner.roots[0];
+
+    let best = Extractor::new(&runner.egraph, AstSize).find_best(root).1;
+    let lp_best = LpExtractor::new(&runner.egraph, AstSize).solve(root);
+
+    println!("input   [{}] {}", expr.as_ref().len(), expr);
+    println!("normal  [{}] {}", best.as_ref().len(), best);
+    println!("ilp cse [{}] {}", lp_best.as_ref().len(), lp_best);
+
+    assert_ne!(best, lp_best);
+    assert_eq!(lp_best.as_ref().len(), 4);
+}
+
+#[test]
 fn math_egg() {
     // build
     let depth = 7;
@@ -369,7 +397,30 @@ fn math_mcts_geb() {
         gamma: 0.99,
         expansion_worker_num: 1,
         simulation_worker_num: n_threads - 1,
+        lp_extract: false,
         node_limit: 10_000,
+        time_limit: 10,
+    };
+    run_mcts(expr, rules(), MathCostFn, Some(args));
+}
+
+#[test]
+#[ignore]
+fn math_mcts_geb_lp() {
+    println!("num rules {}", rules().len());
+    // build
+    let depth = 7;
+    let seed = 1;
+    let expr = build_rand_expr(seed, depth);
+    let n_threads = std::thread::available_parallelism().unwrap().get();
+    let args = MCTSArgs {
+        budget: 512,
+        max_sim_step: 10,
+        gamma: 0.99,
+        expansion_worker_num: 1,
+        simulation_worker_num: n_threads - 1,
+        lp_extract: true,
+        node_limit: 1000,
         time_limit: 10,
     };
     run_mcts(expr, rules(), MathCostFn, Some(args));

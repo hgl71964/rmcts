@@ -4,7 +4,7 @@ use crate::node::{Node, NodeStub};
 use crate::pool_manager;
 use crate::workers::Reply;
 
-use egg::{Analysis, CostFunction, Language, RecExpr, Rewrite};
+use egg::{Analysis, CostFunction, Language, LpCostFunction, RecExpr, Rewrite};
 use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -52,7 +52,7 @@ where
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
-    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    CF: CostFunction<L> + LpCostFunction<L, N> + Clone + std::marker::Send + 'static,
     usize: From<<CF as CostFunction<L>>::Cost>,
 {
     // from param
@@ -65,6 +65,7 @@ where
     // ckpts: HashMap<u32, Vec<usize>>,
     ckpts: HashMap<u32, Ckpt<L, N>>,
     cf: CF,
+    lp_extract: bool,
 
     // for planning
     root_node: Rc<RefCell<Node>>,
@@ -91,7 +92,7 @@ where
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
-    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    CF: CostFunction<L> + LpCostFunction<L, N> + Clone + std::marker::Send + 'static,
     usize: From<<CF as CostFunction<L>>::Cost>,
 {
     pub fn new(
@@ -105,6 +106,7 @@ where
         expr: RecExpr<L>,
         rules: Vec<Rewrite<L, N>>,
         cf: CF,
+        lp_extract: bool,
         node_limit: usize,
         time_limit: usize,
     ) -> Self {
@@ -122,6 +124,7 @@ where
                 expr.clone(),
                 rules.clone(),
                 cf.clone(),
+                lp_extract,
                 node_limit,
                 time_limit,
             ),
@@ -134,11 +137,13 @@ where
                 expr.clone(),
                 rules.clone(),
                 cf.clone(),
+                lp_extract,
                 node_limit,
                 time_limit,
             ),
             ckpts: HashMap::new(),
             cf: cf,
+            lp_extract: lp_extract,
 
             root_node: Node::dummy(),
             global_saving_idx: 0,
@@ -163,6 +168,7 @@ where
             expr,
             rules,
             self.cf.clone(),
+            self.lp_extract,
             self.node_limit,
             self.time_limit,
         );

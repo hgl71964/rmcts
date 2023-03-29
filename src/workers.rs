@@ -2,7 +2,7 @@ use crate::eg_env::{Ckpt, EgraphEnv};
 // use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
 
-use egg::{Analysis, CostFunction, Language, RecExpr, Rewrite, StopReason};
+use egg::{Analysis, CostFunction, Language, LpCostFunction, RecExpr, Rewrite, StopReason};
 use rand::Rng;
 use std::sync::mpsc;
 use std::thread;
@@ -42,6 +42,7 @@ pub fn worker_loop<L, N, CF>(
     expr: RecExpr<L>,
     rules: Vec<Rewrite<L, N>>,
     cf: CF,
+    lp_extract: bool,
     node_limit: usize,
     time_limit: usize,
 ) -> (
@@ -54,7 +55,7 @@ where
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
     <N as Analysis<L>>::Data: Send,
-    CF: CostFunction<L> + Clone + std::marker::Send + 'static,
+    CF: CostFunction<L> + LpCostFunction<L, N> + Clone + std::marker::Send + 'static,
     usize: From<<CF as CostFunction<L>>::Cost>,
 {
     let (tx, rx) = mpsc::channel();
@@ -62,7 +63,7 @@ where
     let handle = thread::spawn(move || {
         // make env
         // let mut env = Env::new(expr, rules, node_limit, time_limit);
-        let mut env = EgraphEnv::new(expr, rules, cf, node_limit, time_limit);
+        let mut env = EgraphEnv::new(expr, rules, cf, lp_extract, node_limit, time_limit);
         env.reset();
         // worker loop
         loop {

@@ -59,6 +59,13 @@ impl<L: Language> CostFunction<L> for AstSize {
     }
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "lp")))]
+impl<L: Language, N: Analysis<L>> LpCostFunction<L, N> for AstSize {
+    fn node_cost(&mut self, _egraph: &EGraph<L, N>, _eclass: Id, _enode: &L) -> f64 {
+        1.0
+    }
+}
+
 #[test]
 fn simple_egg_test() {
     assert_eq!(simplify("(* 0 42)"), "0");

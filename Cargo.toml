@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 # egg = { version = "0.9.3", features = [ "lp", "serde-1"] }
-egg = { version = "0.9.3", features = ["serde-1"] }
+egg = { version = "0.9.3", features = ["lp"] }
 rand = { version = "0.8.5"}
-serde = { version = "1.0", features = ["derive"] }
+# serde = { version = "1.0", features = ["derive"] }
 
 
 # test only deps
