@@ -42,6 +42,14 @@ impl egg::CostFunction<Math> for MathCostFn {
     where
         C: FnMut(Id) -> Self::Cost,
     {
+        // only SymbolLang provides `op` field, which can `as_str()`
+        // let op_cost = match enode.op.as_str() {
+        //     "d" => 100,
+        //     "i" => 100,
+        //     _ => 1,
+        // };
+        // enode.fold(op_cost, |sum, i| sum + costs(i))
+        //
         let op_cost = match enode {
             Math::Diff(..) => 100,
             Math::Integral(..) => 100,
@@ -251,6 +259,19 @@ fn math_build_lang_by_hand() {
 }
 
 #[test]
+fn math_cost_fn() {
+    let mut expr = RecExpr::default();
+
+    let leaf1 = Math::Symbol("a".into());
+    let leaf2 = Math::Constant(NotNan::new(1.0).unwrap());
+    let id1 = expr.add(leaf1);
+    let id2 = expr.add(leaf2);
+
+    let node = Math::from_op("*", vec![id1, id2]).unwrap();
+    expr.add(node);
+}
+
+#[test]
 fn math_rand_seed() {
     let seed = 0;
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
@@ -398,7 +419,7 @@ fn math_mcts_geb() {
         expansion_worker_num: 1,
         simulation_worker_num: n_threads - 1,
         lp_extract: false,
-        node_limit: 10_000,
+        node_limit: 5000,
         time_limit: 10,
     };
     run_mcts(expr, rules(), MathCostFn, Some(args));
@@ -420,7 +441,7 @@ fn math_mcts_geb_lp() {
         expansion_worker_num: 1,
         simulation_worker_num: n_threads - 1,
         lp_extract: true,
-        node_limit: 1000,
+        node_limit: 500,
         time_limit: 10,
     };
     run_mcts(expr, rules(), MathCostFn, Some(args));
