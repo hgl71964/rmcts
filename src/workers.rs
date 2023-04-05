@@ -89,11 +89,9 @@ where
                         new_checkpoint_data = Some(env.checkpoint());
                     }
                     let mut child_saturated = false;
-                    if exp_task.shallow_copy_node.is_head {
-                        match info.report.stop_reason {
-                            StopReason::Saturated => child_saturated = true,
-                            _ => (),
-                        }
+                    match info.report.stop_reason {
+                        StopReason::Saturated => child_saturated = true,
+                        _ => (),
                     }
 
                     // reply
