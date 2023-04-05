@@ -97,44 +97,33 @@ impl Node {
         }
     }
 
-    pub fn select_uct_action(&self) -> usize {
+    pub fn select_uct_action(&self, max: bool) -> usize {
         let mut best_score = std::f32::MIN;
         let mut best_action = 0;
         for action in 0..(self.action_n as usize) {
             if self.children[action].is_none() {
                 continue;
             }
-
-            let exploit_score =
-                self.q_value[action] / (self.children_complete_visit_count[action] as f32);
-            let explore_score = f32::sqrt(
-                2.0 * f32::ln(self.visit_count as f32) / (self.children_visit_count[action] as f32),
-            );
-            // TODO consider std?
-            let score = exploit_score + 2.0 * explore_score;
-
-            if score > best_score {
-                best_score = score;
-                best_action = action;
-            }
-        }
-        best_action
-    }
-
-    pub fn select_uct_max_action(&self) -> usize {
-        let mut best_score = std::f32::MIN;
-        let mut best_action = 0;
-        for action in 0..(self.action_n as usize) {
             if self.children_saturated[action] {
                 continue;
             }
-            if self.children[action].is_none() {
-                continue;
-            }
 
             let exploit_score =
                 self.q_value[action] / (self.children_complete_visit_count[action] as f32);
-            let score = exploit_score;
+            // let explore_score = f32::sqrt(
+            //     2.0 * f32::ln(self.visit_count as f32) / (self.children_visit_count[action] as f32),
+            // );
+            // TODO consider std?
+            let explore_score;
+            if max {
+                explore_score = 0.0;
+            } else {
+                explore_score = f32::sqrt(
+                    2.0 * f32::ln(self.visit_count as f32)
+                        / (self.children_visit_count[action] as f32),
+                );
+            }
+            let score = exploit_score + 2.0 * explore_score;
 
             if score > best_score {
                 best_score = score;

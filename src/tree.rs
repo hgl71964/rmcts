@@ -255,7 +255,7 @@ where
         // thread, as a way to handle stragger
 
         // final action
-        self.root_node.borrow().select_uct_max_action()
+        self.root_node.borrow().select_uct_action(true)
     }
 
     fn simulate_single_step(&mut self, sim_idx: u32) {
@@ -303,7 +303,7 @@ where
                 break;
             }
 
-            let action = curr_node.borrow().select_uct_action();
+            let action = curr_node.borrow().select_uct_action(false);
             let reward = curr_node.borrow().rewards[action].clone();
             curr_node
                 .borrow_mut()
