@@ -2,7 +2,10 @@ use crate::eg_env::{Ckpt, EgraphEnv};
 // use crate::env::Env;
 use crate::tree::{ExpTask, SimTask};
 
-use egg::{Analysis, CostFunction, Language, LpCostFunction, RecExpr, Rewrite, StopReason};
+#[allow(unused_imports)]
+use egg::{
+    Analysis, CostFunction, EGraph, Id, Language, LpCostFunction, RecExpr, Rewrite, StopReason,
+};
 use rand::Rng;
 use std::sync::mpsc;
 use std::thread;
@@ -39,7 +42,8 @@ pub fn worker_loop<L, N, CF>(
     gamma: f32,
     max_sim_step: u32,
     verbose: bool,
-    expr: RecExpr<L>,
+    egraph: EGraph<L, N>,
+    root_id: Id,
     rules: Vec<Rewrite<L, N>>,
     cf: CF,
     lp_extract: bool,
@@ -63,7 +67,9 @@ where
     let handle = thread::spawn(move || {
         // make env
         // let mut env = Env::new(expr, rules, node_limit, time_limit);
-        let mut env = EgraphEnv::new(expr, rules, cf, lp_extract, node_limit, time_limit);
+        let mut env = EgraphEnv::new(
+            egraph, root_id, rules, cf, lp_extract, node_limit, time_limit,
+        );
         env.reset();
         // worker loop
         loop {
@@ -82,12 +88,10 @@ where
                     env.restore(exp_task.checkpoint_data);
                     let expand_action = exp_task.shallow_copy_node.select_expansion_action();
                     let (next_state, reward, done, info) = env.step(expand_action);
-                    let new_checkpoint_data;
-                    if done {
-                        new_checkpoint_data = None;
-                    } else {
-                        new_checkpoint_data = Some(env.checkpoint());
-                    }
+                    let new_checkpoint_data = if done { None } else { Some(env.checkpoint()) };
+
+                    // saturated means this action doesn't match any enode
+                    // so we shouldn't select again!
                     let mut child_saturated = false;
                     match info.report.stop_reason {
                         StopReason::Saturated => child_saturated = true,

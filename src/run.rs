@@ -1,5 +1,6 @@
 use crate::tree;
-use egg::{Analysis, CostFunction, Language, LpCostFunction, RecExpr, Rewrite};
+#[allow(unused_imports)]
+use egg::{Analysis, CostFunction, EGraph, Id, Language, LpCostFunction, RecExpr, Rewrite};
 
 pub struct MCTSArgs {
     pub budget: u32,
@@ -14,7 +15,8 @@ pub struct MCTSArgs {
 }
 
 pub fn run_mcts<L, N, CF>(
-    expr: RecExpr<L>,
+    egraph: EGraph<L, N>,
+    id: Id,
     rules: Vec<Rewrite<L, N>>,
     cf: CF,
     args: Option<MCTSArgs>,
@@ -64,12 +66,13 @@ pub fn run_mcts<L, N, CF>(
         expansion_worker_num,
         simulation_worker_num,
         // egg
-        expr.clone(),
+        egraph.clone(),
+        id.clone(),
         rules.clone(),
         cf,
         lp_extract,
         node_limit,
         time_limit,
     );
-    mcts.run_loop(expr, rules.clone());
+    mcts.run_loop(egraph, id, rules.clone());
 }

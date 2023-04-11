@@ -121,15 +121,14 @@ impl Node {
             //     2.0 * f32::ln(self.visit_count as f32) / (self.children_visit_count[action] as f32),
             // );
             // TODO consider std?
-            let explore_score;
-            if max {
-                explore_score = 0.0;
+            let explore_score = if max {
+                0.0
             } else {
-                explore_score = f32::sqrt(
+                f32::sqrt(
                     2.0 * f32::ln(self.visit_count as f32)
                         / (self.children_visit_count[action] as f32),
-                );
-            }
+                )
+            };
             let score = exploit_score + 2.0 * explore_score;
 
             if score > best_score {

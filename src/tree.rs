@@ -4,7 +4,8 @@ use crate::node::{Node, NodeStub};
 use crate::pool_manager;
 use crate::workers::Reply;
 
-use egg::{Analysis, CostFunction, Language, LpCostFunction, RecExpr, Rewrite};
+#[allow(unused_imports)]
+use egg::{Analysis, CostFunction, EGraph, Id, Language, LpCostFunction, RecExpr, Rewrite};
 use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -103,7 +104,8 @@ where
         expansion_worker_num: usize,
         simulation_worker_num: usize,
         // egg
-        expr: RecExpr<L>,
+        egraph: EGraph<L, N>,
+        id: Id,
         rules: Vec<Rewrite<L, N>>,
         cf: CF,
         lp_extract: bool,
@@ -121,7 +123,8 @@ where
                 gamma,
                 max_sim_step,
                 false,
-                expr.clone(),
+                egraph.clone(),
+                id.clone(),
                 rules.clone(),
                 cf.clone(),
                 lp_extract,
@@ -134,7 +137,8 @@ where
                 gamma,
                 max_sim_step,
                 false,
-                expr.clone(),
+                egraph.clone(),
+                id.clone(),
                 rules.clone(),
                 cf.clone(),
                 lp_extract,
@@ -161,11 +165,12 @@ where
         }
     }
 
-    pub fn run_loop(&mut self, expr: RecExpr<L>, rules: Vec<Rewrite<L, N>>) {
+    pub fn run_loop(&mut self, egraph: EGraph<L, N>, id: Id, rules: Vec<Rewrite<L, N>>) {
         // env
         // let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
         let mut env = EgraphEnv::new(
-            expr,
+            egraph,
+            id,
             rules,
             self.cf.clone(),
             self.lp_extract,

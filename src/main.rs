@@ -47,5 +47,8 @@ impl<L: Language, N: Analysis<L>> LpCostFunction<L, N> for AstSize {
 }
 
 fn main() {
-    run::run_mcts("(* 0 42)".parse().unwrap(), make_rules(), AstSize, None);
+    let expr = "(* 0 42)".parse().unwrap();
+    let runner = Runner::default().with_expr(&expr);
+    let root = runner.roots[0];
+    run::run_mcts(runner.egraph, root, make_rules(), AstSize, None);
 }

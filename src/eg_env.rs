@@ -29,8 +29,8 @@ where
     CF: CostFunction<L> + LpCostFunction<L, N> + Clone + std::marker::Send + 'static,
     usize: From<<CF as CostFunction<L>>::Cost>,
 {
-    expr: RecExpr<L>,
-    egraph: EGraph<L, N>,
+    init_egraph: EGraph<L, N>,
+    pub egraph: EGraph<L, N>,
     cf: CF,
     lp_extract: bool,
     root_id: Id,
@@ -56,28 +56,27 @@ where
     usize: From<<CF as CostFunction<L>>::Cost>,
 {
     pub fn new(
-        expr: RecExpr<L>,
+        egraph: EGraph<L, N>,
+        root_id: Id,
         rules: Vec<Rewrite<L, N>>,
         cf: CF,
         lp_extract: bool,
         node_limit: usize,
         time_limit: usize,
     ) -> Self {
-        let runner: Runner<L, N> = Runner::default().with_expr(&expr);
-        let root = runner.roots[0];
         assert!(!lp_extract); // TODO lp_extract only gets expr, but we need to compute cost
                               // init expr cost; NOTE: expr length != expr cost
-        let (base_cost, _) = Extractor::new(&runner.egraph, cf.clone()).find_best(root);
+        let (base_cost, _) = Extractor::new(&egraph, cf.clone()).find_best(root_id);
         let base_cost = usize::try_from(base_cost).unwrap();
         // let len = expr.as_ref().len();
         // assert_eq!(len, base_cost);
         //
         EgraphEnv {
-            expr: expr,
+            init_egraph: egraph,
             egraph: EGraph::default(),
             cf: cf,
             lp_extract: lp_extract,
-            root_id: root,
+            root_id: root_id,
             num_rules: rules.len(),
             rules: rules,
             node_limit: node_limit,
@@ -93,8 +92,7 @@ where
     pub fn reset(&mut self) {
         self.cnt = 0;
         self.sat_counter = 0;
-        self.egraph = EGraph::default();
-        self.egraph.add_expr(&self.expr);
+        self.egraph = self.init_egraph.clone();
         self.last_cost = self.base_cost;
     }
 

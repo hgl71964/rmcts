@@ -28,8 +28,7 @@ define_language! {
         "cos" = Cos(Id),
 
         Constant(Constant),
-        Symbol(Symbol),
-    }
+        Symbol(Symbol), }
 }
 
 // You could use egg::AstSize, but this is useful for debugging, since
@@ -411,6 +410,8 @@ fn math_mcts_geb() {
     let depth = 7;
     let seed = 1;
     let expr = build_rand_expr(seed, depth);
+    let runner = Runner::default().with_expr(&expr);
+    let root = runner.roots[0];
     let n_threads = std::thread::available_parallelism().unwrap().get();
     let args = MCTSArgs {
         budget: 512,
@@ -422,7 +423,7 @@ fn math_mcts_geb() {
         node_limit: 5000,
         time_limit: 10,
     };
-    run_mcts(expr, rules(), MathCostFn, Some(args));
+    run_mcts(runner.egraph, root, rules(), MathCostFn, Some(args));
 }
 
 #[test]
@@ -433,6 +434,8 @@ fn math_mcts_geb_lp() {
     let depth = 7;
     let seed = 1;
     let expr = build_rand_expr(seed, depth);
+    let runner = Runner::default().with_expr(&expr);
+    let root = runner.roots[0];
     let n_threads = std::thread::available_parallelism().unwrap().get();
     let args = MCTSArgs {
         budget: 512,
@@ -444,5 +447,5 @@ fn math_mcts_geb_lp() {
         node_limit: 500,
         time_limit: 10,
     };
-    run_mcts(expr, rules(), MathCostFn, Some(args));
+    run_mcts(runner.egraph, root, rules(), MathCostFn, Some(args));
 }

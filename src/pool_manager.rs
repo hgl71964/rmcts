@@ -1,7 +1,8 @@
 use crate::tree::{ExpTask, SimTask};
 use crate::workers::{worker_loop, Message, Reply};
 
-use egg::{Analysis, CostFunction, Language, LpCostFunction, RecExpr, Rewrite};
+#[allow(unused_imports)]
+use egg::{Analysis, CostFunction, EGraph, Id, Language, LpCostFunction, RecExpr, Rewrite};
 use std::marker::PhantomData;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
@@ -48,7 +49,8 @@ where
         gamma: f32,
         max_sim_step: u32,
         verbose: bool,
-        expr: RecExpr<L>,
+        egraph: EGraph<L, N>,
+        id: Id,
         rules: Vec<Rewrite<L, N>>,
         cf: CF,
         lp_extract: bool,
@@ -65,7 +67,8 @@ where
                 gamma,
                 max_sim_step,
                 verbose,
-                expr.clone(),
+                egraph.clone(),
+                id.clone(),
                 rules.clone(),
                 cf.clone(),
                 lp_extract,

@@ -74,7 +74,9 @@ fn simple_egg_test() {
 
 #[test]
 fn simple_mcts_geb_test() {
-    let expr = "(* 0 42)";
+    let expr = "(* 0 42)".parse().unwrap();
     let rws = make_rules();
-    run::run_mcts(expr.parse().unwrap(), rws, AstSize, None);
+    let runner = Runner::default().with_expr(&expr);
+    let root = runner.roots[0];
+    run::run_mcts(runner.egraph, root, rws, AstSize, None);
 }
