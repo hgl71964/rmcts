@@ -12,6 +12,7 @@ pub struct MCTSArgs {
 
     pub node_limit: usize,
     pub time_limit: usize,
+    pub cost_threshold: usize,
 }
 
 pub fn run_mcts<L, N, CF>(
@@ -40,6 +41,7 @@ pub fn run_mcts<L, N, CF>(
     // egg
     let mut node_limit = 10_000;
     let mut time_limit = 1;
+    let mut cost_threshold = 1;
 
     // overwrite params if possible
     match args {
@@ -54,6 +56,8 @@ pub fn run_mcts<L, N, CF>(
 
             node_limit = args.node_limit;
             time_limit = args.time_limit;
+
+            cost_threshold = args.cost_threshold;
         }
     }
 
@@ -74,5 +78,5 @@ pub fn run_mcts<L, N, CF>(
         node_limit,
         time_limit,
     );
-    mcts.run_loop(egraph, id, rules.clone());
+    mcts.run_loop(egraph, id, rules.clone(), cost_threshold);
 }

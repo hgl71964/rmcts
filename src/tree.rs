@@ -165,7 +165,13 @@ where
         }
     }
 
-    pub fn run_loop(&mut self, egraph: EGraph<L, N>, id: Id, rules: Vec<Rewrite<L, N>>) {
+    pub fn run_loop(
+        &mut self,
+        egraph: EGraph<L, N>,
+        id: Id,
+        rules: Vec<Rewrite<L, N>>,
+        cost_threshold: usize,
+    ) {
         // env
         // let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
         let mut env = EgraphEnv::new(
@@ -206,7 +212,7 @@ where
             );
             println!("{}", info.report);
             println!("************************");
-            if done {
+            if done || info.best_cost < cost_threshold {
                 break;
             }
         }

@@ -422,6 +422,7 @@ fn math_mcts_geb() {
         lp_extract: false,
         node_limit: 5000,
         time_limit: 10,
+        cost_threshold: 1,
     };
     run_mcts(runner.egraph, root, rules(), MathCostFn, Some(args));
 }
@@ -446,6 +447,7 @@ fn math_mcts_geb_lp() {
         lp_extract: true,
         node_limit: 500,
         time_limit: 10,
+        cost_threshold: 1,
     };
     run_mcts(runner.egraph, root, rules(), MathCostFn, Some(args));
 }

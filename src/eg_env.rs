@@ -1,7 +1,7 @@
 use crate::env::Info;
 use egg::{
-    Analysis, CostFunction, EGraph, Extractor, Id, Language, LpCostFunction, LpExtractor, RecExpr,
-    Rewrite, Runner, SimpleScheduler, StopReason,
+    Analysis, CostFunction, EGraph, Extractor, Id, Language, LpCostFunction, LpExtractor, Rewrite,
+    Runner, SimpleScheduler, StopReason,
 };
 use std::time::Duration;
 
@@ -148,6 +148,7 @@ where
                 );
             }
             StopReason::Saturated => {
+                // TODO sat_counter is enough to indicate saturation?
                 self.sat_counter += 1;
                 if self.sat_counter == (self.num_rules) {
                     done = true;
