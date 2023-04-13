@@ -73,10 +73,30 @@ fn simple_egg_test() {
 }
 
 #[test]
-fn simple_mcts_geb_test() {
-    let expr = "(* 0 42)".parse().unwrap();
-    let rws = make_rules();
-    let runner = Runner::default().with_expr(&expr);
-    let root = runner.roots[0];
-    run::run_mcts(runner.egraph, root, rws, AstSize, None);
+fn simple_test() {
+    let mut expr = RecExpr::default();
+    let a = expr.add(SymbolLang::leaf("a"));
+    let b = expr.add(SymbolLang::leaf("b"));
+    let foo = expr.add(SymbolLang::new("foo", vec![a, b]));
+
+    // we can do the same thing with an EGraph
+    let mut egraph: EGraph<SymbolLang, ()> = Default::default();
+    let a = egraph.add(SymbolLang::leaf("a"));
+    let b = egraph.add(SymbolLang::leaf("b"));
+    let foo = egraph.add(SymbolLang::new("foo", vec![a, b]));
+
+    // we can also add RecExprs to an egraph
+    let foo2 = egraph.add_expr(&expr);
+    // note that if you add the same thing to an e-graph twice, you'll get back equivalent Ids
+    assert_eq!(foo, foo2);
+
+    let mut find = false;
+    let enodes = expr.as_ref();
+    for en in enodes.iter() {
+        if en.op.as_str() == "foo" {
+            find = true;
+            println!("okokokoko");
+        }
+    }
+    assert!(find);
 }

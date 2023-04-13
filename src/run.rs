@@ -21,7 +21,8 @@ pub fn run_mcts<L, N, CF>(
     rules: Vec<Rewrite<L, N>>,
     cf: CF,
     args: Option<MCTSArgs>,
-) where
+) -> EGraph<L, N>
+where
     L: Language + 'static + egg::FromOp + std::marker::Send,
     N: Analysis<L> + Clone + 'static + std::default::Default + std::marker::Send,
     N::Data: Clone,
@@ -78,5 +79,5 @@ pub fn run_mcts<L, N, CF>(
         node_limit,
         time_limit,
     );
-    mcts.run_loop(egraph, id, rules.clone(), cost_threshold);
+    mcts.run_loop(egraph, id, rules.clone(), cost_threshold)
 }

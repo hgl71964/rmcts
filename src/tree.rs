@@ -171,7 +171,7 @@ where
         id: Id,
         rules: Vec<Rewrite<L, N>>,
         cost_threshold: usize,
-    ) {
+    ) -> EGraph<L, N> {
         // env
         // let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
         let mut env = EgraphEnv::new(
@@ -222,6 +222,7 @@ where
         );
 
         self.close();
+        env.egraph
     }
 
     // fn plan(&mut self, _state: &(), env: &Env<L, N>) -> usize {
