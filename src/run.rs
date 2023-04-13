@@ -9,10 +9,11 @@ pub struct MCTSArgs {
     pub expansion_worker_num: usize,
     pub simulation_worker_num: usize,
     pub lp_extract: bool,
+    pub cost_threshold: usize,
+    pub iter_limit: usize,
 
     pub node_limit: usize,
     pub time_limit: usize,
-    pub cost_threshold: usize,
 }
 
 pub fn run_mcts<L, N, CF>(
@@ -38,11 +39,12 @@ where
     let mut expansion_worker_num = 1;
     let mut simulation_worker_num = 4;
     let mut lp_extract = false;
+    let mut cost_threshold = 1;
+    let mut iter_limit = 30;
     // let verbose = false;
     // egg
     let mut node_limit = 10_000;
     let mut time_limit = 1;
-    let mut cost_threshold = 1;
 
     // overwrite params if possible
     match args {
@@ -54,11 +56,11 @@ where
             expansion_worker_num = args.expansion_worker_num;
             simulation_worker_num = args.simulation_worker_num;
             lp_extract = args.lp_extract;
+            cost_threshold = args.cost_threshold;
+            iter_limit = args.iter_limit;
 
             node_limit = args.node_limit;
             time_limit = args.time_limit;
-
-            cost_threshold = args.cost_threshold;
         }
     }
 
@@ -79,5 +81,5 @@ where
         node_limit,
         time_limit,
     );
-    mcts.run_loop(egraph, id, rules.clone(), cost_threshold)
+    mcts.run_loop(egraph, id, rules.clone(), cost_threshold, iter_limit)
 }

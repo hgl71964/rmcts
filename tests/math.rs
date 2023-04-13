@@ -420,9 +420,11 @@ fn math_mcts_geb() {
         expansion_worker_num: 1,
         simulation_worker_num: n_threads - 1,
         lp_extract: false,
+        cost_threshold: 1,
+        iter_limit: 30,
+
         node_limit: 5000,
         time_limit: 10,
-        cost_threshold: 1,
     };
     run_mcts(runner.egraph, root, rules(), MathCostFn, Some(args));
 }
@@ -445,9 +447,11 @@ fn math_mcts_geb_lp() {
         expansion_worker_num: 1,
         simulation_worker_num: n_threads - 1,
         lp_extract: true,
+        cost_threshold: 1,
+        iter_limit: 30,
+
         node_limit: 500,
         time_limit: 10,
-        cost_threshold: 1,
     };
     run_mcts(runner.egraph, root, rules(), MathCostFn, Some(args));
 }

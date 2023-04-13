@@ -171,6 +171,7 @@ where
         id: Id,
         rules: Vec<Rewrite<L, N>>,
         cost_threshold: usize,
+        iter_limit: usize,
     ) -> EGraph<L, N> {
         // env
         // let mut env = Env::new(expr, rules, self.node_limit, self.time_limit);
@@ -190,7 +191,7 @@ where
         let mut reward;
         let mut done;
         let mut info;
-        let mut cnt = 0;
+        let mut cnt = 1;
         let mut episode_reward = 0.0;
         let mut total_planning_time = 0;
 
@@ -212,7 +213,7 @@ where
             );
             println!("{}", info.report);
             println!("************************");
-            if done || info.best_cost < cost_threshold {
+            if done || info.best_cost < cost_threshold || cnt >= iter_limit {
                 break;
             }
         }
