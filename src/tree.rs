@@ -191,7 +191,7 @@ where
         let mut reward;
         let mut done;
         let mut info;
-        let mut cnt = 1;
+        let mut iter = 0;
         let mut episode_reward = 0.0;
         let mut total_planning_time = 0;
 
@@ -204,22 +204,22 @@ where
 
             (state, reward, done, info) = env.step(action);
 
-            cnt += 1;
+            iter += 1;
             episode_reward += reward;
 
             println!(
                 "[RMCTS] Iter {}; planning time {}s; reward {}; episode_reward {}; best cost {}",
-                cnt, planning_time, reward, episode_reward, info.best_cost
+                iter, planning_time, reward, episode_reward, info.best_cost
             );
             println!("{}", info.report);
             println!("************************");
-            if done || info.best_cost < cost_threshold || cnt >= iter_limit {
+            if done || info.best_cost < cost_threshold || iter >= iter_limit {
                 break;
             }
         }
         println!(
-            "[RMCTS] Done:: base_cost {} -> cost {} with time {}s",
-            env.base_cost, info.best_cost, total_planning_time,
+            "[RMCTS] Done:: base_cost {} -> cost {} with iter {} and time {}s",
+            env.base_cost, info.best_cost, iter, total_planning_time,
         );
 
         self.close();

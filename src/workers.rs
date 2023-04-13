@@ -76,7 +76,7 @@ where
             let message = rx.recv().unwrap();
             match message {
                 Message::Exit => {
-                    println!("Worker {} Exit!", id);
+                    // println!("Worker {} Exit!", id);
                     break;
                 }
 
