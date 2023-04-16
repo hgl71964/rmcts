@@ -208,7 +208,7 @@ where
             episode_reward += reward;
 
             println!(
-                "[RMCTS] Iter {}; planning time {}s; reward {}; episode_reward {}; best cost {}",
+                "Iter {}; planning time {}s; reward {}; episode_reward {}; best cost {}",
                 iter, planning_time, reward, episode_reward, info.best_cost
             );
             println!("{}", info.report);
@@ -261,7 +261,7 @@ where
 
         // clean up
         println!(
-            "[RMCTS] complete count {}/{} - max_depth {}",
+            "complete count {}/{} - max_depth {}",
             self.simulation_count, self.budget, depth
         );
         thread::sleep(Duration::from_secs(1));
