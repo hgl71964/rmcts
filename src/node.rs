@@ -142,6 +142,12 @@ impl Node {
                 self.is_head, self.updated_node_count, sat_count, child_missing_count
             );
         }
+        if max {
+            println!(
+                "best_action {} and expected score {}",
+                best_action, best_score
+            );
+        }
         best_action
     }
 
